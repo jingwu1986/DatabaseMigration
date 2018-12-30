@@ -88,7 +88,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AesHelper.cs" />
     <Compile Include="frmDbConnect.cs">
       <SubType>Form</SubType>
     </Compile>
