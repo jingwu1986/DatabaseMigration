@@ -162,6 +162,14 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region Identity
+        public override void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled)
+        {
+            Table table = new Table() { Name = column.TableName, Owner = column.Owner };
+            this.ExecuteNonQuery(dbConnection, $"ALTER TABLE {GetQuotedTableName(table)} MODIFY COLUMN {TranslateColumn(table, column)} {(enabled ? "AUTO_INCREMENT" : "")}");
+        }
+        #endregion
+
         #region Generate Schema Scripts 
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)

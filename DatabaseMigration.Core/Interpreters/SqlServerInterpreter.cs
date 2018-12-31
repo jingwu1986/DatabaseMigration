@@ -166,6 +166,13 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region Identity
+        public override void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled)
+        {
+            this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedTableName(new Table() { Name=column.TableName, Owner=column.Owner })} {(enabled? "OFF": "ON")}");
+        }
+        #endregion
+
         #region Generate Schema Script   
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)

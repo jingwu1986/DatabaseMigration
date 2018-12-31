@@ -335,6 +335,10 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region Identity
+        public virtual void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled) { }   
+        #endregion
+
         #region Generate Scripts
 
         public virtual SchemaInfo GetSchemaInfo(string[] tableNames)

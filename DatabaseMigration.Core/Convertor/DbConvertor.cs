@@ -65,6 +65,13 @@ namespace DatabaseMigration.Core
             }         
 
             DbInterpreter targetInterpreter = this.Target.DbInterpreter;
+            bool generateIdentity = targetInterpreter.Option.GenerateIdentity;
+
+            if(generateIdentity)
+            {                
+                targetInterpreter.Option.InsertIdentityValue = true;
+            }
+
             string script = "";
 
             sourceInterpreter.Subscribe(this);
@@ -105,6 +112,12 @@ namespace DatabaseMigration.Core
 
             if(this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data))
             {
+                List<TableColumn> identityTableColumns = new List<TableColumn>();
+                if(generateIdentity)
+                {
+                    identityTableColumns = targetSchemaInfo.Columns.Where(item => item.IsIdentity).ToList();
+                }
+
                 if (this.Option.PickupTable != null)
                 {
                     sourceSchemaInfo.PickupTable = this.Option.PickupTable;
@@ -115,6 +128,14 @@ namespace DatabaseMigration.Core
 
                 using (DbConnection dbConnection = targetInterpreter.GetDbConnector().CreateConnection())
                 {
+                    identityTableColumns.ForEach(item =>
+                    {
+                        if(targetInterpreter.DatabaseType==DatabaseType.SqlServer)
+                        {
+                            targetInterpreter.SetIdentityEnabled(dbConnection, item, false);
+                        }
+                    });
+
                     sourceInterpreter.OnDataRead += (table, columns, data) =>
                     {
                         try
@@ -165,6 +186,14 @@ namespace DatabaseMigration.Core
                     };
 
                     sourceInterpreter.GenerateDataScripts(sourceSchemaInfo);
+
+                    identityTableColumns.ForEach(item =>
+                    {
+                        if(targetInterpreter.DatabaseType==DatabaseType.SqlServer)
+                        {
+                            targetInterpreter.SetIdentityEnabled(dbConnection, item, true);
+                        }                        
+                    });
                 }
             }           
         }

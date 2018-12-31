@@ -39,6 +39,7 @@
             this.cboTargetProfile = new System.Windows.Forms.ComboBox();
             this.tvSource = new System.Windows.Forms.TreeView();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.chkGenerateIdentity = new System.Windows.Forms.CheckBox();
             this.chkPickup = new System.Windows.Forms.CheckBox();
             this.chkScriptData = new System.Windows.Forms.CheckBox();
             this.chkScriptSchema = new System.Windows.Forms.CheckBox();
@@ -56,16 +57,18 @@
             this.convertorBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.btnSourceScript = new System.Windows.Forms.Button();
             this.sourceScriptBackgroundWorker = new System.ComponentModel.BackgroundWorker();
+            this.btnCancel = new System.Windows.Forms.Button();
+            this.grpMessage = new System.Windows.Forms.GroupBox();
+            this.txtMessage = new System.Windows.Forms.RichTextBox();
+            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.btnSaveMessage = new System.Windows.Forms.Button();
+            this.btnCopyMessage = new System.Windows.Forms.Button();
+            this.btnRemoveTarget = new System.Windows.Forms.Button();
+            this.btnRemoveSource = new System.Windows.Forms.Button();
             this.btnConfigTarget = new System.Windows.Forms.Button();
             this.btnConfigSource = new System.Windows.Forms.Button();
             this.btnAddTarget = new System.Windows.Forms.Button();
             this.btnAddSource = new System.Windows.Forms.Button();
-            this.btnRemoveSource = new System.Windows.Forms.Button();
-            this.btnRemoveTarget = new System.Windows.Forms.Button();
-            this.btnCancel = new System.Windows.Forms.Button();
-            this.grpMessage = new System.Windows.Forms.GroupBox();
-            this.txtMessage = new System.Windows.Forms.RichTextBox();
-            this.chkGenerateIdentity = new System.Windows.Forms.CheckBox();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.grpMessage.SuspendLayout();
@@ -198,6 +201,16 @@
             this.groupBox1.TabIndex = 13;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Options";
+            // 
+            // chkGenerateIdentity
+            // 
+            this.chkGenerateIdentity.AutoSize = true;
+            this.chkGenerateIdentity.Location = new System.Drawing.Point(9, 204);
+            this.chkGenerateIdentity.Name = "chkGenerateIdentity";
+            this.chkGenerateIdentity.Size = new System.Drawing.Size(126, 16);
+            this.chkGenerateIdentity.TabIndex = 14;
+            this.chkGenerateIdentity.Text = "Generate identity";
+            this.chkGenerateIdentity.UseVisualStyleBackColor = true;
             // 
             // chkPickup
             // 
@@ -353,6 +366,98 @@
             this.btnSourceScript.UseVisualStyleBackColor = true;
             this.btnSourceScript.Click += new System.EventHandler(this.btnSourceScript_Click);
             // 
+            // btnCancel
+            // 
+            this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
+            this.btnCancel.Enabled = false;
+            this.btnCancel.Location = new System.Drawing.Point(489, 364);
+            this.btnCancel.Name = "btnCancel";
+            this.btnCancel.Size = new System.Drawing.Size(75, 23);
+            this.btnCancel.TabIndex = 15;
+            this.btnCancel.Text = "Cancel";
+            this.btnCancel.UseVisualStyleBackColor = true;
+            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
+            // 
+            // grpMessage
+            // 
+            this.grpMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpMessage.Controls.Add(this.btnSaveMessage);
+            this.grpMessage.Controls.Add(this.btnCopyMessage);
+            this.grpMessage.Controls.Add(this.txtMessage);
+            this.grpMessage.Location = new System.Drawing.Point(7, 393);
+            this.grpMessage.Name = "grpMessage";
+            this.grpMessage.Size = new System.Drawing.Size(677, 87);
+            this.grpMessage.TabIndex = 20;
+            this.grpMessage.TabStop = false;
+            this.grpMessage.Text = "Message";
+            // 
+            // txtMessage
+            // 
+            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtMessage.BackColor = System.Drawing.Color.White;
+            this.txtMessage.Location = new System.Drawing.Point(6, 17);
+            this.txtMessage.Name = "txtMessage";
+            this.txtMessage.ReadOnly = true;
+            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this.txtMessage.Size = new System.Drawing.Size(632, 67);
+            this.txtMessage.TabIndex = 0;
+            this.txtMessage.Text = "";
+            // 
+            // btnSaveMessage
+            // 
+            this.btnSaveMessage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnSaveMessage.Image = global::DatabaseMigration.Properties.Resources.Save;
+            this.btnSaveMessage.Location = new System.Drawing.Point(644, 49);
+            this.btnSaveMessage.Name = "btnSaveMessage";
+            this.btnSaveMessage.Size = new System.Drawing.Size(27, 23);
+            this.btnSaveMessage.TabIndex = 9;
+            this.btnSaveMessage.UseVisualStyleBackColor = true;
+            this.btnSaveMessage.Click += new System.EventHandler(this.btnSaveMessage_Click);
+            // 
+            // btnCopyMessage
+            // 
+            this.btnCopyMessage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnCopyMessage.Image = global::DatabaseMigration.Properties.Resources.Copy;
+            this.btnCopyMessage.Location = new System.Drawing.Point(644, 20);
+            this.btnCopyMessage.Name = "btnCopyMessage";
+            this.btnCopyMessage.Size = new System.Drawing.Size(27, 23);
+            this.btnCopyMessage.TabIndex = 8;
+            this.btnCopyMessage.UseVisualStyleBackColor = true;
+            this.btnCopyMessage.Click += new System.EventHandler(this.btnCopyMessage_Click);
+            // 
+            // btnRemoveTarget
+            // 
+            this.btnRemoveTarget.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRemoveTarget.BackColor = System.Drawing.Color.White;
+            this.btnRemoveTarget.FlatAppearance.BorderSize = 0;
+            this.btnRemoveTarget.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRemoveTarget.Image = global::DatabaseMigration.Properties.Resources.Remove;
+            this.btnRemoveTarget.Location = new System.Drawing.Point(527, 55);
+            this.btnRemoveTarget.Name = "btnRemoveTarget";
+            this.btnRemoveTarget.Size = new System.Drawing.Size(18, 17);
+            this.btnRemoveTarget.TabIndex = 19;
+            this.btnRemoveTarget.UseVisualStyleBackColor = false;
+            this.btnRemoveTarget.Visible = false;
+            this.btnRemoveTarget.Click += new System.EventHandler(this.btnRemoveTarget_Click);
+            // 
+            // btnRemoveSource
+            // 
+            this.btnRemoveSource.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnRemoveSource.BackColor = System.Drawing.Color.White;
+            this.btnRemoveSource.FlatAppearance.BorderSize = 0;
+            this.btnRemoveSource.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRemoveSource.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.btnRemoveSource.Image = global::DatabaseMigration.Properties.Resources.Remove;
+            this.btnRemoveSource.Location = new System.Drawing.Point(527, 28);
+            this.btnRemoveSource.Name = "btnRemoveSource";
+            this.btnRemoveSource.Size = new System.Drawing.Size(16, 18);
+            this.btnRemoveSource.TabIndex = 13;
+            this.btnRemoveSource.UseVisualStyleBackColor = false;
+            this.btnRemoveSource.Visible = false;
+            this.btnRemoveSource.Click += new System.EventHandler(this.btnRemoveSource_Click);
+            // 
             // btnConfigTarget
             // 
             this.btnConfigTarget.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -404,84 +509,6 @@
             this.btnAddSource.TabIndex = 7;
             this.btnAddSource.UseVisualStyleBackColor = true;
             this.btnAddSource.Click += new System.EventHandler(this.btnAddSource_Click);
-            // 
-            // btnRemoveSource
-            // 
-            this.btnRemoveSource.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnRemoveSource.BackColor = System.Drawing.Color.White;
-            this.btnRemoveSource.FlatAppearance.BorderSize = 0;
-            this.btnRemoveSource.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnRemoveSource.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.btnRemoveSource.Image = global::DatabaseMigration.Properties.Resources.Remove;
-            this.btnRemoveSource.Location = new System.Drawing.Point(527, 28);
-            this.btnRemoveSource.Name = "btnRemoveSource";
-            this.btnRemoveSource.Size = new System.Drawing.Size(16, 18);
-            this.btnRemoveSource.TabIndex = 13;
-            this.btnRemoveSource.UseVisualStyleBackColor = false;
-            this.btnRemoveSource.Visible = false;
-            this.btnRemoveSource.Click += new System.EventHandler(this.btnRemoveSource_Click);
-            // 
-            // btnRemoveTarget
-            // 
-            this.btnRemoveTarget.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnRemoveTarget.BackColor = System.Drawing.Color.White;
-            this.btnRemoveTarget.FlatAppearance.BorderSize = 0;
-            this.btnRemoveTarget.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnRemoveTarget.Image = global::DatabaseMigration.Properties.Resources.Remove;
-            this.btnRemoveTarget.Location = new System.Drawing.Point(527, 55);
-            this.btnRemoveTarget.Name = "btnRemoveTarget";
-            this.btnRemoveTarget.Size = new System.Drawing.Size(18, 17);
-            this.btnRemoveTarget.TabIndex = 19;
-            this.btnRemoveTarget.UseVisualStyleBackColor = false;
-            this.btnRemoveTarget.Visible = false;
-            this.btnRemoveTarget.Click += new System.EventHandler(this.btnRemoveTarget_Click);
-            // 
-            // btnCancel
-            // 
-            this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnCancel.Enabled = false;
-            this.btnCancel.Location = new System.Drawing.Point(489, 364);
-            this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(75, 23);
-            this.btnCancel.TabIndex = 15;
-            this.btnCancel.Text = "Cancel";
-            this.btnCancel.UseVisualStyleBackColor = true;
-            this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
-            // 
-            // grpMessage
-            // 
-            this.grpMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.grpMessage.Controls.Add(this.txtMessage);
-            this.grpMessage.Location = new System.Drawing.Point(7, 393);
-            this.grpMessage.Name = "grpMessage";
-            this.grpMessage.Size = new System.Drawing.Size(677, 87);
-            this.grpMessage.TabIndex = 20;
-            this.grpMessage.TabStop = false;
-            this.grpMessage.Text = "Message";
-            // 
-            // txtMessage
-            // 
-            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtMessage.BackColor = System.Drawing.Color.White;
-            this.txtMessage.Location = new System.Drawing.Point(6, 17);
-            this.txtMessage.Name = "txtMessage";
-            this.txtMessage.ReadOnly = true;
-            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.txtMessage.Size = new System.Drawing.Size(665, 67);
-            this.txtMessage.TabIndex = 0;
-            this.txtMessage.Text = "";
-            // 
-            // chkGenerateIdentity
-            // 
-            this.chkGenerateIdentity.AutoSize = true;
-            this.chkGenerateIdentity.Location = new System.Drawing.Point(9, 204);
-            this.chkGenerateIdentity.Name = "chkGenerateIdentity";
-            this.chkGenerateIdentity.Size = new System.Drawing.Size(126, 16);
-            this.chkGenerateIdentity.TabIndex = 14;
-            this.chkGenerateIdentity.Text = "Generate identity";
-            this.chkGenerateIdentity.UseVisualStyleBackColor = true;
             // 
             // frmMain
             // 
@@ -564,6 +591,9 @@
         private System.Windows.Forms.RichTextBox txtMessage;
         private System.Windows.Forms.CheckBox chkPickup;
         private System.Windows.Forms.CheckBox chkGenerateIdentity;
+        private System.Windows.Forms.Button btnSaveMessage;
+        private System.Windows.Forms.Button btnCopyMessage;
+        private System.Windows.Forms.SaveFileDialog saveFileDialog1;
     }
 }
 

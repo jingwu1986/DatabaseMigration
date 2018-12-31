@@ -732,5 +732,22 @@ namespace DatabaseMigration
                 }
             }
         }
+
+        private void btnCopyMessage_Click(object sender, EventArgs e)
+        {           
+            Clipboard.SetDataObject(this.txtMessage.Text);
+            MessageBox.Show("The message has been copied to clipboard.");
+        }
+
+        private void btnSaveMessage_Click(object sender, EventArgs e)
+        {
+            this.saveFileDialog1.Filter = "txt files|*.txt|all files|*.*";
+            DialogResult dialogResult= this.saveFileDialog1.ShowDialog();
+            if(dialogResult==DialogResult.OK)
+            {
+                File.WriteAllLines(this.saveFileDialog1.FileName, this.txtMessage.Text.Split(new char[] { '\n','\r' }, StringSplitOptions.RemoveEmptyEntries));
+                this.saveFileDialog1.Reset();
+            }
+        }
     }
 }
