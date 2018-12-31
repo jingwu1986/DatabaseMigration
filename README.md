@@ -1,7 +1,3 @@
 # DatabaseMigration
-Migrate database objects between different database, including schema and data.
-It supports primary key, foreign key, index, identity, default value and comment.
-It supports datatype mapping via adding mapping file.
-It supoorts data batch submit.
-It considers data self reference of a table.
-It supports SqlServer, Oracle and MySql currently.
+Migrate objects between different database, including schema and data.
+It supports to generate primary key, foreign key, index, identity, default value and comment, and supports datatype mapping via adding mapping file. It supports data batch submit, and considers data self reference of a table. Currently, it implements sync tables between SqlServer, Oracle and MySql.
