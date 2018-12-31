@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,20 +12,21 @@ namespace DatabaseMigration.Core
         public static DbInterpreter GetDbInterpreter(DatabaseType dbType, ConnectionInfo connectionInfo, GenerateScriptOption generateScriptOption)
         {
             DbInterpreter dbInterpreter = null;
-            switch (dbType)
+
+            var types = (from type in Assembly.GetExecutingAssembly().GetTypes()
+                         where type.IsSubclassOf(typeof(DbInterpreter))
+                         select type).ToList();
+
+            foreach (var type in types)
             {
-                case DatabaseType.SqlServer:
-                    dbInterpreter = new SqlServerInterpreter(connectionInfo, generateScriptOption);
-                    break;
-                case DatabaseType.MySql:
-                    dbInterpreter = new MySqlInterpreter(connectionInfo, generateScriptOption);
-                    break;
-                case DatabaseType.Oracle:
-                    dbInterpreter = new OracleInterpreter(connectionInfo, generateScriptOption);
-                    break;
-                default:
-                    throw new NotSupportedException($"Do not support {dbType} currently.");
+                dbInterpreter = (DbInterpreter)Activator.CreateInstance(type, connectionInfo, generateScriptOption);
+
+                if(dbInterpreter!=null && dbInterpreter.DatabaseType==dbType)
+                {
+                    return dbInterpreter;
+                }
             }
+           
             return dbInterpreter;
         }       
     }

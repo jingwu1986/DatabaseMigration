@@ -19,14 +19,15 @@ namespace DatabaseMigration.Core
         public abstract char QuotationRightChar { get; }
         public abstract DatabaseType DatabaseType { get; }
         public GenerateScriptOption Option { get; set; } = new GenerateScriptOption();
-        public ConnectionInfo ConnectionInfo { get; protected set; }
+        public ConnectionInfo ConnectionInfo { get; set; }
 
         public delegate void DataReadHandler(Table table, List<TableColumn> columns, List<Dictionary<string, object>> data);
         public event DataReadHandler OnDataRead;
-        private IObserver<FeedbackInfo> m_Observer;       
+        private IObserver<FeedbackInfo> m_Observer;
         #endregion
 
-        #region Constructor
+        #region Constructor     
+
         public DbInterpreter(ConnectionInfo connectionInfo, GenerateScriptOption option)
         {
             this.ConnectionInfo = connectionInfo;
