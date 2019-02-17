@@ -47,6 +47,13 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region User Defined Type
+        public override List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames)
+        {
+            return new List<UserDefinedType>();
+        }
+        #endregion
+
         #region Table
         public override List<Table> GetTables(params string[] tableNames)
         {
@@ -76,7 +83,7 @@ namespace DatabaseMigration.Core
             DbConnector dbConnector = this.GetDbConnector();
 
             string sql = $@"SELECT OWNER AS ""Owner"", C.TABLE_NAME AS ""TableName"",C.COLUMN_NAME AS ""ColumnName"",DATA_TYPE AS ""DataType"",NULLABLE AS ""IsNullable"", DATA_LENGTH AS ""MaxLength"",
-                 DATA_PRECISION AS ""Precision"",DATA_SCALE AS ""Scale"", COLUMN_ID AS ""Order"", DATA_DEFAULT AS ""DefaultValue"", 0 AS ""IsIdentity"", CC.COMMENTS AS ""Comment"" 
+                 DATA_PRECISION AS ""Precision"",DATA_SCALE AS ""Scale"", COLUMN_ID AS ""Order"", DATA_DEFAULT AS ""DefaultValue"", 0 AS ""IsIdentity"", CC.COMMENTS AS ""Comment"" , '' AS ""TypeOwner""
                  FROM ALL_TAB_COLUMNS C
                  LEFT JOIN USER_COL_COMMENTS CC ON C.TABLE_NAME=CC.TABLE_NAME AND C.COLUMN_NAME=CC.COLUMN_NAME
                  WHERE UPPER(OWNER)=UPPER('{ConnectionInfo.UserId}')";
@@ -160,7 +167,7 @@ namespace DatabaseMigration.Core
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)
         {          
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();            
 
             #region Create Table
             foreach (Table table in schemaInfo.Tables)

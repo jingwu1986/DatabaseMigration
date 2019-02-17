@@ -16,6 +16,10 @@ namespace DatabaseMigration.Core
         }
         public static void TransformOwner(SchemaInfo schemaInfo, string owner)
         {
+            schemaInfo.UserDefinedTypes.ForEach(item =>
+            {
+                item.Owner = owner;
+            });
             schemaInfo.Tables.ForEach(item =>
             {
                 item.Owner = owner;

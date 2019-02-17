@@ -36,13 +36,22 @@ namespace DatabaseMigration.Core
             }           
         }
 
-        public void Convert(params string[] tableNames)
+        public void Convert(SchemaInfo schemaInfo=null)
         {
             DbInterpreter sourceInterpreter = this.Source.DbInterpreter;
 
             sourceInterpreter.Option.TreatBytesAsNullForScript = true;
 
-            tableNames = sourceInterpreter.GetTables(tableNames).Select(item => item.Name).ToArray();
+            string[] tableNames = null;
+
+            if(schemaInfo==null)
+            {
+                tableNames = sourceInterpreter.GetTables().Select(item => item.Name).ToArray();
+            }
+            else
+            {
+                tableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
+            }           
 
             SchemaInfo sourceSchemaInfo = sourceInterpreter.GetSchemaInfo(tableNames);
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);

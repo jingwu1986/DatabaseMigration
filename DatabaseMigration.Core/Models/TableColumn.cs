@@ -20,5 +20,7 @@ namespace DatabaseMigration.Core
         public int Order { get; set; }
         public string DefaultValue { get; set; }
         public string Comment { get; set; }
+        public bool IsUserDefined { get; set; }
+        public string TypeOwner { get; set; }
     }
 }

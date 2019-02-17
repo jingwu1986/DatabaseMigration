@@ -140,6 +140,7 @@
     <Compile Include="Models\TableForeignKey.cs" />
     <Compile Include="Models\TableIndex.cs" />
     <Compile Include="Models\TablePrimaryKey.cs" />
+    <Compile Include="Models\UserDefinedType.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Providers\IDbProvider.cs" />
     <Compile Include="Providers\MySqlProvider.cs" />

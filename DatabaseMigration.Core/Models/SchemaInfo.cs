@@ -8,6 +8,7 @@ namespace DatabaseMigration.Core
 {
     public class SchemaInfo
     {
+        public List<UserDefinedType> UserDefinedTypes { get; set; } = new List<UserDefinedType>();
         public List<Table> Tables { get; set; } = new List<Table>();
         public List<TableColumn> Columns { get; set; } = new List<TableColumn>();
         public List<TablePrimaryKey> TablePrimaryKeys { get; set; }= new List<TablePrimaryKey>();

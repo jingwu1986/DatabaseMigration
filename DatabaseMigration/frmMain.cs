@@ -188,6 +188,22 @@ namespace DatabaseMigration
             DatabaseType dbType = this.GetDatabaseType(this.cboSourceDB.Text);
             DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(dbType, this.sourceDbConnectionInfo, new GenerateScriptOption());
 
+            if(dbInterpreter is SqlServerInterpreter)
+            {
+                TreeNode userDefinedRootNode = new TreeNode("User Defined Types");
+                userDefinedRootNode.Name = nameof(UserDefinedType);
+                this.tvSource.Nodes.Add(userDefinedRootNode);
+
+                List<UserDefinedType> userDefinedTypes = dbInterpreter.GetUserDefinedTypes();
+                foreach (UserDefinedType userDefinedType in userDefinedTypes)
+                {
+                    TreeNode node = new TreeNode();
+                    node.Tag = userDefinedType;
+                    node.Text = $"{userDefinedType.Owner}.{userDefinedType.Name}";
+                    userDefinedRootNode.Nodes.Add(node);
+                }
+            }
+
             TreeNode tableRootNode = new TreeNode("Tables");
             tableRootNode.Name=nameof(Table);
             this.tvSource.Nodes.Add(tableRootNode);
@@ -324,6 +340,9 @@ namespace DatabaseMigration
                     {
                         switch (node.Name)
                         {
+                            case nameof(UserDefinedType):
+                                schemaInfo.UserDefinedTypes.Add(item.Tag as UserDefinedType);
+                                break;
                             case nameof(Table):
                                 schemaInfo.Tables.Add(item.Tag as Table);
                                 break;
@@ -336,7 +355,7 @@ namespace DatabaseMigration
 
         private bool ValidateSource(SchemaInfo schemaInfo)
         {           
-            if (schemaInfo.Tables.Count == 0)
+            if (schemaInfo.UserDefinedTypes.Count ==0 && schemaInfo.Tables.Count == 0)
             {
                 MessageBox.Show("Please select objects from tree.");
                 return false;
@@ -479,7 +498,7 @@ namespace DatabaseMigration
             bool success = false;
             try
             {
-                dbConvertor.Convert(schemaInfo.Tables.Select(item=>item.Name).ToArray());
+                dbConvertor.Convert(schemaInfo);
                 success = true;
 
                 if(dataErrorProfile!=null)

@@ -164,6 +164,40 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region User Defined Type
+        public abstract List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames);
+        protected List<UserDefinedType> GetUserDefinedTypes(DbConnector dbConnector, string sql)
+        {
+            List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
+            using (DbConnection dbConnection = dbConnector.CreateConnection())
+            {
+                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
+                if (dataReader.HasRows)
+                {
+                    while (dataReader.Read())
+                    {
+                        UserDefinedType table = new UserDefinedType()
+                        {
+                            Owner = dataReader["Owner"]?.ToString(),
+                            Name = dataReader["Name"]?.ToString(),
+                            Type = dataReader["Type"]?.ToString(),
+                            MaxLength = StringHelper.Convert2Int(dataReader["MaxLength"]?.ToString()) ?? 0,
+                            Precision = StringHelper.Convert2Int(dataReader["Precision"]?.ToString()) ?? 0,
+                            Scale = StringHelper.Convert2Int(dataReader["Scale"]?.ToString()) ?? 0,
+                            IsRequired = !StringHelper.Convert2Bool(dataReader["IsNullable"]?.ToString()),
+                        };
+
+                        userDefinedTypes.Add(table);
+                    }
+                }
+            }
+
+            this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
+
+            return userDefinedTypes;
+        }
+        #endregion
+
         #region Table
         public abstract List<Table> GetTables(params string[] tableNames);
         protected List<Table> GetTables(DbConnector dbConnector, string sql)
@@ -180,7 +214,7 @@ namespace DatabaseMigration.Core
                         Table table = new Table()
                         {
                             Owner = dataReader["Owner"]?.ToString(),
-                            Name = dataReader["Name"]?.ToString(),
+                            Name = dataReader["Name"]?.ToString(),                          
                             Comment = dataReader["Comment"]?.ToString(),
                             IdentitySeed = StringHelper.Convert2Int(dataReader["IdentitySeed"]?.ToString()),
                             IdentityIncrement = StringHelper.Convert2Int(dataReader["IdentityIncrement"]?.ToString()),
@@ -196,7 +230,7 @@ namespace DatabaseMigration.Core
 
             return tables;
         }
-        #endregion
+        #endregion      
 
         #region Table Column
         public abstract List<TableColumn> GetTableColumns(params string[] tableNames);
@@ -224,7 +258,9 @@ namespace DatabaseMigration.Core
                             Precision = StringHelper.Convert2Int(dataReader["Precision"]?.ToString()),
                             Scale = StringHelper.Convert2Int(dataReader["Scale"]?.ToString()),
                             Order = StringHelper.Convert2Int(dataReader["Order"]?.ToString()) ?? 0,
-                            DefaultValue = dataReader["DefaultValue"]?.ToString()
+                            DefaultValue = dataReader["DefaultValue"]?.ToString(),
+                            IsUserDefined = StringHelper.Convert2Bool(dataReader["IsUserDefined"]?.ToString()),
+                            TypeOwner = dataReader["TypeOwner"]?.ToString(),
                         };
 
                         columns.Add(column);
@@ -343,6 +379,7 @@ namespace DatabaseMigration.Core
 
         public virtual SchemaInfo GetSchemaInfo(string[] tableNames)
         {
+            List<UserDefinedType> userDefinedTypes = this.GetUserDefinedTypes();
             List<Table> tables = this.GetTables(tableNames);
             List<TableColumn> columns = this.GetTableColumns(tableNames);
             List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
@@ -377,7 +414,7 @@ namespace DatabaseMigration.Core
                 tables = tables.OrderBy(item => item.Order).ToList();
             }
 
-            return new SchemaInfo() { Tables = tables, Columns = columns, TablePrimaryKeys = tablePrimaryKeys, TableForeignKeys = tableForeignKeys, TableIndices = tableIndices };
+            return new SchemaInfo() { UserDefinedTypes=userDefinedTypes, Tables = tables, Columns = columns, TablePrimaryKeys = tablePrimaryKeys, TableForeignKeys = tableForeignKeys, TableIndices = tableIndices };
         }
         public abstract string GenerateSchemaScripts(SchemaInfo schemaInfo);
         public abstract string TranslateColumn(Table table, TableColumn column);

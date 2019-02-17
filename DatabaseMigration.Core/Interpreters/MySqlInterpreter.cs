@@ -50,6 +50,13 @@ namespace DatabaseMigration.Core
         }
         #endregion
 
+        #region User Defined Type
+        public override List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames)
+        {
+            return new List<UserDefinedType>();
+        }
+        #endregion
+
         #region Table
         public override List<Table> GetTables(params string[] tableNames)
         {
@@ -81,7 +88,7 @@ namespace DatabaseMigration.Core
             string sql = $@"SELECT TABLE_SCHEMA AS `Owner`, TABLE_NAME AS TableName, COLUMN_NAME AS ColumnName, COLUMN_TYPE AS DataType, 
                         CHARACTER_MAXIMUM_LENGTH AS MaxLength, IS_NULLABLE AS IsNullable,ORDINAL_POSITION AS `Order`,
                         NUMERIC_PRECISION AS `Precision`,NUMERIC_SCALE AS `Scale`, COLUMN_DEFAULT AS `DefaultValue`,COLUMN_COMMENT AS `Comment`,
-                        CASE EXTRA WHEN 'auto_increment' THEN 1 ELSE 0 END AS `IsIdentity`
+                        CASE EXTRA WHEN 'auto_increment' THEN 1 ELSE 0 END AS `IsIdentity`,'' AS `TypeOwner`
                         FROM INFORMATION_SCHEMA.`COLUMNS`
                         WHERE TABLE_SCHEMA ='{ConnectionInfo.Database}'";
 

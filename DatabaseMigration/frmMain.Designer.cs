@@ -59,10 +59,10 @@
             this.sourceScriptBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.btnCancel = new System.Windows.Forms.Button();
             this.grpMessage = new System.Windows.Forms.GroupBox();
-            this.txtMessage = new System.Windows.Forms.RichTextBox();
-            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.btnSaveMessage = new System.Windows.Forms.Button();
             this.btnCopyMessage = new System.Windows.Forms.Button();
+            this.txtMessage = new System.Windows.Forms.RichTextBox();
+            this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
             this.btnRemoveTarget = new System.Windows.Forms.Button();
             this.btnRemoveSource = new System.Windows.Forms.Button();
             this.btnConfigTarget = new System.Windows.Forms.Button();
@@ -392,19 +392,6 @@
             this.grpMessage.TabStop = false;
             this.grpMessage.Text = "Message";
             // 
-            // txtMessage
-            // 
-            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtMessage.BackColor = System.Drawing.Color.White;
-            this.txtMessage.Location = new System.Drawing.Point(6, 17);
-            this.txtMessage.Name = "txtMessage";
-            this.txtMessage.ReadOnly = true;
-            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.txtMessage.Size = new System.Drawing.Size(632, 67);
-            this.txtMessage.TabIndex = 0;
-            this.txtMessage.Text = "";
-            // 
             // btnSaveMessage
             // 
             this.btnSaveMessage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -426,6 +413,19 @@
             this.btnCopyMessage.TabIndex = 8;
             this.btnCopyMessage.UseVisualStyleBackColor = true;
             this.btnCopyMessage.Click += new System.EventHandler(this.btnCopyMessage_Click);
+            // 
+            // txtMessage
+            // 
+            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtMessage.BackColor = System.Drawing.Color.White;
+            this.txtMessage.Location = new System.Drawing.Point(6, 17);
+            this.txtMessage.Name = "txtMessage";
+            this.txtMessage.ReadOnly = true;
+            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this.txtMessage.Size = new System.Drawing.Size(632, 67);
+            this.txtMessage.TabIndex = 0;
+            this.txtMessage.Text = "";
             // 
             // btnRemoveTarget
             // 

@@ -35,7 +35,7 @@ namespace DatabaseMigration.Core
                 yield return new SqlParameter(kp.Key, kp.Value);
             }
         }
-        #endregion
+        #endregion       
 
         #region Database
         public override List<Database> GetDatabases()
@@ -45,6 +45,25 @@ namespace DatabaseMigration.Core
             string sql = $@"SELECT name AS Name FROM sys.databases WHERE owner_sid != 0x01 ORDER BY database_id";  
 
             return base.GetDatabases(dbConnector, sql);
+        }
+        #endregion 
+        
+        #region User Defined Type
+        public override List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = @"SELECT schema_name(T.schema_id) AS [Owner],T.name as Name, ST.name AS Type, T.max_length AS MaxLength, T.precision AS Precision,T.scale AS Scale,T.is_nullable AS IsNullable
+                            FROM sys.types T JOIN sys.systypes ST ON T.system_type_id=ST.xusertype
+                            WHERE is_user_defined=1";
+
+            if (typeNames != null && typeNames.Count() > 0)
+            {
+                string strTableNames = StringHelper.GetSingleQuotedString(typeNames);
+                sql += $" AND T.name in ({ strTableNames })";
+            }
+
+            return base.GetUserDefinedTypes(dbConnector, sql);
         }
         #endregion
 
@@ -80,12 +99,13 @@ namespace DatabaseMigration.Core
             DbConnector dbConnector = this.GetDbConnector();
 
             string sql = @"SELECT schema_name(T.schema_id) AS [Owner], T.name AS TableName,C.name AS ColumnName, ST.name AS DataType,C.is_nullable AS IsNullable,C.max_length AS MaxLength, C.precision AS Precision,C.column_id as [Order], 
-                           C.scale AS Scale,SCO.text As DefaultValue, EXT.value AS [Comment],C.is_identity AS IsIdentity
+                           C.scale AS Scale,SCO.text As DefaultValue, EXT.value AS [Comment],C.is_identity AS IsIdentity,STY.is_user_defined AS IsUserDefined,schema_name(STY.schema_id) AS [TypeOwner]
                         FROM sys.columns C 
                         JOIN sys.systypes ST ON C.user_type_id = ST.xusertype
                         JOIN sys.tables T ON C.object_id=T.object_id
                         LEFT JOIN sys.syscomments SCO ON C.default_object_id=SCO.id
-                        LEFT JOIN sys.extended_properties EXT on C.column_id=EXT.minor_id AND C.object_id=EXT.major_id AND EXT.class_desc='OBJECT_OR_COLUMN' AND EXT.name='MS_Description'";
+                        LEFT JOIN sys.extended_properties EXT on C.column_id=EXT.minor_id AND C.object_id=EXT.major_id AND EXT.class_desc='OBJECT_OR_COLUMN' AND EXT.name='MS_Description'
+						LEFT JOIN sys.types STY on C.user_type_id = STY.user_type_id";
 
             if (tableNames != null && tableNames.Count() > 0)
             {
@@ -171,13 +191,29 @@ namespace DatabaseMigration.Core
         {
             this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedTableName(new Table() { Name=column.TableName, Owner=column.Owner })} {(enabled? "OFF": "ON")}");
         }
-        #endregion
+        #endregion       
 
         #region Generate Schema Script   
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)
         {
             StringBuilder sb = new StringBuilder();
+
+            #region User Defined Type
+            foreach (UserDefinedType userDefinedType in schemaInfo.UserDefinedTypes)
+            {
+                this.FeedbackInfo($"Begin generate user defined type {userDefinedType.Name} script.");
+
+                TableColumn column = new TableColumn() { DataType=userDefinedType.Type, MaxLength=userDefinedType.MaxLength, Precision=userDefinedType.Precision, Scale=userDefinedType.Scale };
+                string dataLength = this.GetColumnDataLength(column);
+
+                sb.AppendLine($@"CREATE TYPE {GetQuotedString(userDefinedType.Owner)}.{GetQuotedString(userDefinedType.Name)} FROM {GetQuotedString(userDefinedType.Type)}{(dataLength==""? "": "("+dataLength+")")} {(userDefinedType.IsRequired? "NOT NULL":"NULL")};");
+
+                this.FeedbackInfo($"End generate user defined type {userDefinedType.Name} script.");
+            }
+
+            sb.AppendLine("GO");
+            #endregion
 
             foreach (Table table in schemaInfo.Tables)
             {
@@ -223,12 +259,12 @@ CREATE TABLE {quotedTableName}(
                 #region Comment
                 if (!string.IsNullOrEmpty(table.Comment))
                 {
-                    sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(table.Comment)}',N'user',N'{table.Owner}',N'table',N'{tableName}',NULL,NULL;");
+                    sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(table.Comment)}',N'SCHEMA',N'{table.Owner}',N'table',N'{tableName}',NULL,NULL;");
                 } 
                 
                 foreach(TableColumn column in tableColumns.Where(item=>!string.IsNullOrEmpty(item.Comment)))
                 {
-                    sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(column.Comment)}',N'user',N'{table.Owner}',N'table',N'{tableName}',N'column',N'{column.ColumnName}';");
+                    sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(column.Comment)}',N'SCHEMA',N'{table.Owner}',N'table',N'{tableName}',N'column',N'{column.ColumnName}';");
                 }
                 #endregion               
 
@@ -325,6 +361,12 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
 
         public override string TranslateColumn(Table table, TableColumn column)
         {
+            if(column.IsUserDefined)
+            {
+                
+                return $@"{GetQuotedString(column.ColumnName)} {GetQuotedString(column.TypeOwner)}.{GetQuotedString(column.DataType)} {(column.IsRequired ? "NOT NULL" : "NULL")}";
+            }
+
             string dataLength = this.GetColumnDataLength(column);            
 
             if (!string.IsNullOrEmpty(dataLength))
