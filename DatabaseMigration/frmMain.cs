@@ -498,7 +498,7 @@ namespace DatabaseMigration
             bool success = false;
             try
             {
-                dbConvertor.Convert(schemaInfo);
+                dbConvertor.Convert(schemaInfo, false);
                 success = true;
 
                 if(dataErrorProfile!=null)

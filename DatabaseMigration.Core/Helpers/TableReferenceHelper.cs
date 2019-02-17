@@ -29,29 +29,68 @@ namespace DatabaseMigration.Core
                 childTableNames.AddRange(GetForeignTables(tableName, tableForeignKeys, sortedTableNames.Concat(childTableNames)));
             }
 
-            int i = 0;
-            foreach (string childTableName in childTableNames.ToArray())
-            {
-                IEnumerable<TableForeignKey> foreignKeys = tableForeignKeys.Where(item => item.TableName == childTableName && item.TableName != item.ReferencedTableName);
+            List<string> sortedChildTableNames = GetSortedTableNames(childTableNames, tableForeignKeys);
 
-                foreach(TableForeignKey foreignKey in foreignKeys)
-                {                 
-                    int referencedTableIndex = childTableNames.IndexOf(foreignKey.ReferencedTableName);
-                    if (referencedTableIndex >= 0 && referencedTableIndex > i)
-                    {
-                        string temp = childTableName;
-                        childTableNames[i] = childTableNames[referencedTableIndex];
-                        childTableNames[referencedTableIndex] = temp;
-                    }
-                }                
+            sortedChildTableNames = sortedChildTableNames.Distinct().ToList();
 
-                i++;
-            }
-
-            sortedTableNames.AddRange(childTableNames);
+            sortedTableNames.AddRange(sortedChildTableNames);
 
             IEnumerable<string> selfReferencedTableNames = tableForeignKeys.Where(item => item.TableName == item.ReferencedTableName).Select(item => item.TableName).OrderBy(item => item);
             sortedTableNames.AddRange(selfReferencedTableNames.Where(item => !sortedTableNames.Contains(item)));
+
+            return sortedTableNames;
+        }
+
+        private static List<string> GetSortedTableNames(List<string>tableNames, List<TableForeignKey> tableForeignKeys)
+        {
+            List<string> sortedTableNames = new List<string>();
+
+            for (int i = 0; i <= tableNames.Count - 1; i++)
+            {
+                string tableName = tableNames[i];
+                IEnumerable<TableForeignKey> foreignKeys = tableForeignKeys.Where(item => item.TableName == tableName && item.TableName != item.ReferencedTableName);
+                               
+                if (foreignKeys.Any())
+                {
+                    foreach (TableForeignKey foreignKey in foreignKeys)
+                    {
+                        int referencedTableIndex = tableNames.IndexOf(foreignKey.ReferencedTableName);
+                        if (referencedTableIndex >= 0 && referencedTableIndex > i)
+                        {
+                            sortedTableNames.Add(foreignKey.ReferencedTableName);                          
+                        }
+                    }
+                }
+
+                sortedTableNames.Add(tableName);
+            }
+
+            sortedTableNames = sortedTableNames.Distinct().ToList();
+
+            bool needSort = false;
+            for (int i = 0; i <= sortedTableNames.Count - 1; i++)
+            {
+                string tableName = sortedTableNames[i];
+                IEnumerable<TableForeignKey> foreignKeys = tableForeignKeys.Where(item => item.TableName == tableName && item.TableName != item.ReferencedTableName);
+                               
+                if (foreignKeys.Any())
+                {
+                    foreach (TableForeignKey foreignKey in foreignKeys)
+                    {
+                        int referencedTableIndex = sortedTableNames.IndexOf(foreignKey.ReferencedTableName);
+                        if (referencedTableIndex >= 0 && referencedTableIndex > i)
+                        {
+                            needSort = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (needSort)
+                {
+                    return GetSortedTableNames(sortedTableNames, tableForeignKeys);
+                }
+            }
 
             return sortedTableNames;
         }

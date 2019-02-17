@@ -213,6 +213,7 @@ namespace DatabaseMigration.Core
             }
 
             sb.AppendLine("GO");
+          
             #endregion
 
             foreach (Table table in schemaInfo.Tables)

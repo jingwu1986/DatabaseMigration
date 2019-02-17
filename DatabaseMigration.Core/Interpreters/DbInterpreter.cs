@@ -377,25 +377,38 @@ namespace DatabaseMigration.Core
 
         #region Generate Scripts
 
-        public virtual SchemaInfo GetSchemaInfo(string[] tableNames)
+        public virtual SchemaInfo GetSchemaInfo(string[] tableNames, string[] userDefinedTypeNames=null, bool getAllIfNotSpecified=true)
         {
-            List<UserDefinedType> userDefinedTypes = this.GetUserDefinedTypes();
-            List<Table> tables = this.GetTables(tableNames);
-            List<TableColumn> columns = this.GetTableColumns(tableNames);
+            List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
+            
+            List<Table> tables = new List<Table>();
+            List<TableColumn> columns = new List<TableColumn>();
+
+            if((userDefinedTypeNames!=null && userDefinedTypeNames.Length>0) || getAllIfNotSpecified)
+            {
+                userDefinedTypes = this.GetUserDefinedTypes(userDefinedTypeNames);
+            }            
+
             List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
             List<TableForeignKey> tableForeignKeys = new List<TableForeignKey>();
             List<TableIndex> tableIndices = new List<TableIndex>();
 
-            if (Option.GenerateKey)
+            if ((tableNames!=null && tableNames.Length>0) || getAllIfNotSpecified)
             {
-                tablePrimaryKeys = this.GetTablePrimaryKeys(tableNames);
-                tableForeignKeys = this.GetTableForeignKeys(tableNames);
-            }
+                tables = this.GetTables(tableNames);
+                columns = this.GetTableColumns(tableNames);
 
-            if (Option.GenerateIndex)
-            {
-                tableIndices = tableIndices = this.GetTableIndexes(tableNames);
-            }
+                if (Option.GenerateKey)
+                {
+                    tablePrimaryKeys = this.GetTablePrimaryKeys(tableNames);
+                    tableForeignKeys = this.GetTableForeignKeys(tableNames);
+                }
+
+                if (Option.GenerateIndex)
+                {
+                    tableIndices = tableIndices = this.GetTableIndexes(tableNames);
+                }
+            }      
 
             if (Option.SortTablesByKeyReference && Option.GenerateKey)
             {

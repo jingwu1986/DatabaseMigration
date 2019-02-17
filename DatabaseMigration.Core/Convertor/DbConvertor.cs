@@ -36,24 +36,27 @@ namespace DatabaseMigration.Core
             }           
         }
 
-        public void Convert(SchemaInfo schemaInfo=null)
+        public void Convert(SchemaInfo schemaInfo=null, bool getAllIfNotSpecified = true)
         {
             DbInterpreter sourceInterpreter = this.Source.DbInterpreter;
 
             sourceInterpreter.Option.TreatBytesAsNullForScript = true;
 
             string[] tableNames = null;
+            string[] userDefinedTypeNames = null;
 
-            if(schemaInfo==null)
+            if(schemaInfo==null || getAllIfNotSpecified)
             {
                 tableNames = sourceInterpreter.GetTables().Select(item => item.Name).ToArray();
+                userDefinedTypeNames= sourceInterpreter.GetUserDefinedTypes().Select(item => item.Name).ToArray();
             }
             else
             {
                 tableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
+                userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
             }           
 
-            SchemaInfo sourceSchemaInfo = sourceInterpreter.GetSchemaInfo(tableNames);
+            SchemaInfo sourceSchemaInfo = sourceInterpreter.GetSchemaInfo(tableNames, userDefinedTypeNames, getAllIfNotSpecified);
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);
 
             if(!string.IsNullOrEmpty(this.Target.DbOwner))
@@ -98,7 +101,19 @@ namespace DatabaseMigration.Core
                 targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
                 if (!this.Option.SplitScriptsToExecute)
                 {
-                    targetInterpreter.ExecuteNonQuery(script);
+                    if(targetInterpreter is SqlServerInterpreter)
+                    {
+                        string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+                        scriptItems.ToList().ForEach(item =>
+                        {
+                            targetInterpreter.ExecuteNonQuery(item);
+                        });
+                    }
+                    else
+                    {
+                        targetInterpreter.ExecuteNonQuery(script);
+                    }             
                 }
                 else
                 {
