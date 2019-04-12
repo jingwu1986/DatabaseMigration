@@ -56,20 +56,37 @@ namespace DatabaseMigration.Core
             });
         }
 
+        /// <summary>
+        /// 确保索引名称唯一
+        /// </summary>
+        /// <param name="schemaInfo"></param>
         public static void EnsureIndexNameUnique(SchemaInfo schemaInfo)
         {
             List<string> indexNames = new List<string>();
-            schemaInfo.TableIndices.ForEach(item =>
+            var dic = schemaInfo.TableIndices.GroupBy(_ => new { _.Owner, _.TableName, _.IndexName })
+                .ToDictionary(_ => _.Key, __ => __.ToList());
+            foreach (var pair in dic)
             {
-                if (indexNames.Contains(item.IndexName))
+                var indexName = pair.Key.IndexName;
+                if (indexNames.Contains(pair.Key.IndexName))
                 {
-                    string columnNames = string.Join("_", schemaInfo.TableIndices.Where(t => t.Owner == item.Owner && t.TableName == item.TableName).Select(t => t.ColumnName));
+                    string columnNames = string.Join("_", schemaInfo.TableIndices.Where(t => t.Owner == pair.Key.Owner && t.TableName == pair.Key.TableName).Select(t => t.ColumnName));
 
-                    item.IndexName = $"IX_{item.TableName}_{columnNames}";
+                    indexName = $"IX_{pair.Key.TableName}_{columnNames}";
+
+                    foreach (var item in schemaInfo.TableIndices)
+                    {
+                        if (item.TableName == pair.Key.TableName
+                            && item.Owner == pair.Key.Owner
+                            && item.IndexName == pair.Key.IndexName)
+                        {
+                            item.IndexName = indexName;
+                        }
+                    }
                 }
 
-                indexNames.Add(item.IndexName);
-            });
+                indexNames.Add(indexName);
+            }
         }
 
         public static void RistrictNameLength(SchemaInfo schemaInfo, int maxLength)
