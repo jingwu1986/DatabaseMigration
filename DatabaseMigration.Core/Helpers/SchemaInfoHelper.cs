@@ -55,11 +55,7 @@ namespace DatabaseMigration.Core
                 keyNames.Add(item.KeyName);
             });
         }
-
-        /// <summary>
-        /// 确保索引名称唯一
-        /// </summary>
-        /// <param name="schemaInfo"></param>
+       
         public static void EnsureIndexNameUnique(SchemaInfo schemaInfo)
         {
             List<string> indexNames = new List<string>();
