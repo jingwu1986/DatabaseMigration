@@ -1,12 +1,17 @@
 <mappings>
-<mapping>
-	<SqlServer>getdate()</SqlServer>
-	<MySql>CURRENT_TIMESTAMP</MySql>
-	<Oracle>SYSDATE</Oracle>
-</mapping>
-<mapping>
-	<SqlServer>newid()</SqlServer>
-	<MySql></MySql>
-	<Oracle></Oracle>
-</mapping>
+  <mapping>
+    <SqlServer>getdate()</SqlServer>
+    <MySql>CURRENT_TIMESTAMP</MySql>
+    <Oracle>SYSDATE</Oracle>
+  </mapping>
+  <mapping>
+    <SqlServer>newid()</SqlServer>
+    <MySql></MySql>
+    <Oracle></Oracle>
+  </mapping>
+  <mapping>
+    <SqlServer>newsequentialid()</SqlServer>
+    <MySql></MySql>
+    <Oracle></Oracle>
+  </mapping>
 </mappings>
