@@ -86,6 +86,7 @@
 <mapping>
   <source type="varbinary" />
   <target type="varbinary" />
+  <special sourceMaxLength="-1" type="LONGBLOB"></special>
 </mapping>
 <mapping>
   <source type="varchar" />
