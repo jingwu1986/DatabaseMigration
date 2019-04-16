@@ -180,14 +180,14 @@ namespace DatabaseMigration.Core
         #region Generate Schema Scripts 
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)
-        {            
+        {
             StringBuilder sb = new StringBuilder();
 
             #region Create Table
             foreach (Table table in schemaInfo.Tables)
             {
                 string tableName = table.Name;
-                string quotedTableName = this.GetQuotedTableName(table);               
+                string quotedTableName = this.GetQuotedTableName(table);
 
                 IEnumerable<TableColumn> tableColumns = schemaInfo.Columns.Where(item => item.TableName == tableName).OrderBy(item => item.Order);
 
@@ -231,7 +231,7 @@ $@"
                             string referenceColumnName = string.Join(",", foreignKeyLookup[keyName].Select(item => $"{GetQuotedString(item.ReferencedColumnName)}"));
 
                             string line = $"CONSTRAINT {GetQuotedString(keyName)} FOREIGN KEY ({columnNames}) REFERENCES {GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceColumnName})";
-                            
+
                             if (tableForeignKey.UpdateCascade)
                             {
                                 line += " ON UPDATE CASCADE";
@@ -260,13 +260,13 @@ $@"
                 sb.Append(
 $@"
 CREATE TABLE {quotedTableName}(
-{string.Join(","+ Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item)))}{primaryKey}
-{(foreignKeysLines.Count > 0 ? (","+string.Join(","+ Environment.NewLine, foreignKeysLines)):"")}
-){(!string.IsNullOrEmpty(table.Comment)? ($"comment='{ValueHelper.TransferSingleQuotation(table.Comment)}'"):"")}
-DEFAULT CHARSET={DbCharset};"); 
-                #endregion              
+{string.Join("," + Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item)))}{primaryKey}
+{(foreignKeysLines.Count > 0 ? ("," + string.Join("," + Environment.NewLine, foreignKeysLines)) : "")}
+){(!string.IsNullOrEmpty(table.Comment) ? ($"comment='{ValueHelper.TransferSingleQuotation(table.Comment)}'") : "")}
+DEFAULT CHARSET={DbCharset};");
+                #endregion
 
-                sb.AppendLine();             
+                sb.AppendLine();
 
                 #region Index
                 if (Option.GenerateIndex)
@@ -291,7 +291,15 @@ DEFAULT CHARSET={DbCharset};");
                             {
                                 continue;
                             }
-                            sb.AppendLine($"ALTER TABLE {quotedTableName} ADD {(tableIndex.IsUnique ? "UNIQUE" : "")} INDEX {tableIndex.IndexName} ({columnNames});");
+
+                            var tempIndexName = tableIndex.IndexName;
+                            if (tempIndexName.Contains("-"))
+                            {
+                                tempIndexName = tempIndexName.Replace("-", "_");
+                            }
+
+                            sb.AppendLine($"ALTER TABLE {quotedTableName} ADD {(tableIndex.IsUnique ? "UNIQUE" : "")} INDEX {tempIndexName} ({columnNames});");
+
                             if (!indexColumns.Contains(columnNames))
                             {
                                 indexColumns.Add(columnNames);
@@ -321,7 +329,7 @@ DEFAULT CHARSET={DbCharset};");
         {
             string dataType = column.DataType;
             bool isChar = DataTypeHelper.IsCharType(dataType.ToLower());
-          
+
             if (column.DataType.IndexOf("(") < 0)
             {
                 if (isChar)
@@ -336,13 +344,13 @@ DEFAULT CHARSET={DbCharset};");
                     dataType = $"{dataType}({precision},{scale})";
                 }
 
-                if(isChar || DataTypeHelper.IsTextType(dataType.ToLower()))
+                if (isChar || DataTypeHelper.IsTextType(dataType.ToLower()))
                 {
                     dataType += $" CHARACTER SET {DbCharset} COLLATE {DbCharsetCollation} ";
                 }
             }
 
-            return $@"{GetQuotedString(column.ColumnName)} {dataType} {(column.IsRequired ? "NOT NULL" : "NULL")} {( this.Option.GenerateIdentity && column.IsIdentity ? $"AUTO_INCREMENT" : "")} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + column.DefaultValue)} {(!string.IsNullOrEmpty(column.Comment)? $"comment '{ValueHelper.TransferSingleQuotation(column.Comment)}'":"")}";
+            return $@"{GetQuotedString(column.ColumnName)} {dataType} {(column.IsRequired ? "NOT NULL" : "NULL")} {(this.Option.GenerateIdentity && column.IsIdentity ? $"AUTO_INCREMENT" : "")} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + column.DefaultValue)} {(!string.IsNullOrEmpty(column.Comment) ? $"comment '{ValueHelper.TransferSingleQuotation(column.Comment)}'" : "")}";
         }
 
         private bool IsNoLengthDataType(string dataType)
@@ -360,7 +368,7 @@ DEFAULT CHARSET={DbCharset};");
             string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
 
             return base.GetTableRecordCount(connection, sql);
-        }      
+        }
         public override string GenerateDataScripts(SchemaInfo schemaInfo)
         {
             return base.GenerateDataScripts(schemaInfo);
@@ -368,13 +376,13 @@ DEFAULT CHARSET={DbCharset};");
 
         protected override string GetPagedSql(string tableName, string columnNames, string primaryKeyColumns, string whereClause, long pageNumber, int pageSize)
         {
-            var startEndRowNumber = PaginationHelper.GetStartEndRowNumber(pageNumber, pageSize);         
+            var startEndRowNumber = PaginationHelper.GetStartEndRowNumber(pageNumber, pageSize);
 
             var pagedSql = $@"SELECT {columnNames}
 							  FROM {tableName}
                              {whereClause} 
-                             ORDER BY {(!string.IsNullOrEmpty(primaryKeyColumns)? primaryKeyColumns:"1")}
-                             LIMIT { startEndRowNumber.StartRowNumber -1 } , {pageSize}";
+                             ORDER BY {(!string.IsNullOrEmpty(primaryKeyColumns) ? primaryKeyColumns : "1")}
+                             LIMIT { startEndRowNumber.StartRowNumber - 1 } , {pageSize}";
 
             return pagedSql;
         }
