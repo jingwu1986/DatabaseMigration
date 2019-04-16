@@ -57,16 +57,16 @@ namespace DatabaseMigration.Core
         }
 
         /// <summary>
-        /// 确保索引名称唯一
+        /// 确保同一个表下的索引的名称唯一（不同表下的索引名称可以相同）
         /// </summary>
         /// <param name="schemaInfo"></param>
         public static void EnsureIndexNameUnique(SchemaInfo schemaInfo)
         {
-            List<string> indexNames = new List<string>();
             var dic = schemaInfo.TableIndices.GroupBy(_ => new { _.Owner, _.TableName, _.IndexName })
                 .ToDictionary(_ => _.Key, __ => __.ToList());
             foreach (var pair in dic)
             {
+                List<string> indexNames = new List<string>();
                 var indexName = pair.Key.IndexName;
                 if (indexNames.Contains(pair.Key.IndexName))
                 {
