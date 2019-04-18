@@ -541,7 +541,20 @@ namespace DatabaseMigration.Core
                 }
             }
 
-            return sb.ToString();
+            var dataScripts = string.Empty;
+            try
+            {
+                dataScripts = sb.ToString();
+            }
+            catch (OutOfMemoryException ex)
+            {
+                //ignore
+            }
+            finally
+            {
+                sb.Clear();
+            }
+            return dataScripts;
         }
         public virtual async Task<string> GenerateDataScriptsAsync(SchemaInfo schemaInfo)
         {
@@ -625,7 +638,20 @@ namespace DatabaseMigration.Core
                 }
             }
 
-            return sb.ToString();
+            var dataScripts = string.Empty;
+            try
+            {
+                dataScripts = sb.ToString();
+            }
+            catch (OutOfMemoryException ex)
+            {
+                //ignore
+            }
+            finally
+            {
+                sb.Clear();
+            }
+            return dataScripts;
         }
         private Dictionary<long, List<Dictionary<string, object>>> GetSortedPageDatas(DbConnection connection, Table table, string primaryKeyColumns, string parentColumnName, List<TableColumn> columns, GenerateScriptOption option, string whereClause = "")
         {
