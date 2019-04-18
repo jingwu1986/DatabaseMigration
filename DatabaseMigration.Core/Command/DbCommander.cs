@@ -60,25 +60,7 @@ namespace DatabaseMigration.Core
             DataTable table = new DataTable();
             DbDataReader dataReader = this.ExecteReader();
 
-            int num = 0;
-            for (num = 0; num < dataReader.FieldCount; num++)
-            {
-                DataColumn column = new DataColumn();
-                column.DataType = dataReader.GetFieldType(num);
-                column.ColumnName = dataReader.GetName(num);
-                table.Columns.Add(column);
-            }
-            while (dataReader.Read())
-            {
-                DataRow row = table.NewRow();
-                for (num = 0; num < dataReader.FieldCount; num++)
-                {
-                    row[num] = dataReader[num].ToString();
-                }
-                table.Rows.Add(row);
-                row = null;
-            }
-            dataReader.Close();
+            table.Load(dataReader);
             return table;
         }
     }

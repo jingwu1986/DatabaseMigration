@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Dapper;
 
 namespace DatabaseMigration.Core
 {
@@ -21,7 +22,7 @@ namespace DatabaseMigration.Core
         public GenerateScriptOption Option { get; set; } = new GenerateScriptOption();
         public ConnectionInfo ConnectionInfo { get; set; }
 
-        public delegate void DataReadHandler(Table table, List<TableColumn> columns, List<Dictionary<string, object>> data);
+        public delegate void DataReadHandler(Table table, List<TableColumn> columns, List<Dictionary<string, object>> data, DataTable dataTable);
         public event DataReadHandler OnDataRead;
         private IObserver<FeedbackInfo> m_Observer;
         #endregion
@@ -36,6 +37,21 @@ namespace DatabaseMigration.Core
         #endregion
 
         #region Common Method
+
+        public abstract int BulkCopy(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null);
+
+        public abstract Task<int> BulkCopyAsync(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null);
+
         public string GetDisplayTableName(Table table, bool useQuotedString = false)
         {
             if (this.GetType().Name == nameof(SqlServerInterpreter))
@@ -103,7 +119,7 @@ namespace DatabaseMigration.Core
                     var cmdParams = this.BuildCommandParameters(paramaters);
                     if (cmdParams != null)
                     {
-                        dbCommander.DbCommand.Parameters.AddRange(cmdParams.ToArray());                        
+                        dbCommander.DbCommand.Parameters.AddRange(cmdParams.ToArray());
                     }
                 }
 
@@ -166,30 +182,26 @@ namespace DatabaseMigration.Core
 
         #region User Defined Type
         public abstract List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames);
+        public abstract Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames);
         protected List<UserDefinedType> GetUserDefinedTypes(DbConnector dbConnector, string sql)
         {
-            List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
+            List<UserDefinedType> userDefinedTypes;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
-                {
-                    while (dataReader.Read())
-                    {
-                        UserDefinedType table = new UserDefinedType()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            Name = dataReader["Name"]?.ToString(),
-                            Type = dataReader["Type"]?.ToString(),
-                            MaxLength = StringHelper.Convert2Int(dataReader["MaxLength"]?.ToString()) ?? 0,
-                            Precision = StringHelper.Convert2Int(dataReader["Precision"]?.ToString()) ?? 0,
-                            Scale = StringHelper.Convert2Int(dataReader["Scale"]?.ToString()) ?? 0,
-                            IsRequired = !StringHelper.Convert2Bool(dataReader["IsNullable"]?.ToString()),
-                        };
+                userDefinedTypes = dbConnection.Query<UserDefinedType>(sql).ToList();
+            }
 
-                        userDefinedTypes.Add(table);
-                    }
-                }
+            this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
+
+            return userDefinedTypes;
+        }
+
+        protected async Task<List<UserDefinedType>> GetUserDefinedTypesAsync(DbConnector dbConnector, string sql)
+        {
+            List<UserDefinedType> userDefinedTypes;
+            using (DbConnection dbConnection = dbConnector.CreateConnection())
+            {
+                userDefinedTypes = (await dbConnection.QueryAsync<UserDefinedType>(sql)).ToList();
             }
 
             this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
@@ -200,27 +212,41 @@ namespace DatabaseMigration.Core
 
         #region Table
         public abstract List<Table> GetTables(params string[] tableNames);
+        public abstract Task<List<Table>> GetTablesAsync(params string[] tableNames);
         protected List<Table> GetTables(DbConnector dbConnector, string sql)
         {
             List<Table> tables = new List<Table>();
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
+                var list = dbConnection.Query<Table>(sql);
+                if (list != null && list.Any())
                 {
                     int i = 1;
-                    while (dataReader.Read())
+                    foreach (var table in list)
                     {
-                        Table table = new Table()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            Name = dataReader["Name"]?.ToString(),                          
-                            Comment = dataReader["Comment"]?.ToString(),
-                            IdentitySeed = StringHelper.Convert2Int(dataReader["IdentitySeed"]?.ToString()),
-                            IdentityIncrement = StringHelper.Convert2Int(dataReader["IdentityIncrement"]?.ToString()),
-                            Order = i++
-                        };
+                        table.Order = i++;
+                        tables.Add(table);
+                    }
+                }
+            }
 
+            this.FeedbackInfo($"Get {tables.Count} tables.");
+
+            return tables;
+        }
+
+        protected async Task<List<Table>> GetTablesAsync(DbConnector dbConnector, string sql)
+        {
+            List<Table> tables = new List<Table>();
+            using (DbConnection dbConnection = dbConnector.CreateConnection())
+            {
+                var list = await dbConnection.QueryAsync<Table>(sql);
+                if (list != null && list.Any())
+                {
+                    int i = 1;
+                    foreach (var table in list)
+                    {
+                        table.Order = i++;
                         tables.Add(table);
                     }
                 }
@@ -237,37 +263,11 @@ namespace DatabaseMigration.Core
 
         protected List<TableColumn> GetTableColumns(DbConnector dbConnector, string sql)
         {
-            List<TableColumn> columns = new List<TableColumn>();
+            List<TableColumn> columns;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
-                {
-                    while (dataReader.Read())
-                    {
-                        TableColumn column = new TableColumn()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            TableName = dataReader["TableName"]?.ToString(),
-                            ColumnName = dataReader["ColumnName"]?.ToString(),
-                            DataType = dataReader["DataType"]?.ToString(),
-                            Comment = dataReader["Comment"]?.ToString(),
-                            IsRequired = !StringHelper.Convert2Bool(dataReader["IsNullable"]?.ToString()),
-                            IsIdentity = StringHelper.Convert2Bool(dataReader["IsIdentity"]?.ToString()),
-                            MaxLength = StringHelper.Convert2Long(dataReader["MaxLength"]?.ToString()),
-                            Precision = StringHelper.Convert2Int(dataReader["Precision"]?.ToString()),
-                            Scale = StringHelper.Convert2Int(dataReader["Scale"]?.ToString()),
-                            Order = StringHelper.Convert2Int(dataReader["Order"]?.ToString()) ?? 0,
-                            DefaultValue = dataReader["DefaultValue"]?.ToString(),
-                            IsUserDefined = StringHelper.Convert2Bool(dataReader["IsUserDefined"]?.ToString()),
-                            TypeOwner = dataReader["TypeOwner"]?.ToString(),
-                        };
-
-                        columns.Add(column);
-                    }
-                }
+                columns = dbConnection.Query<TableColumn>(sql).ToList();
             }
-
             return columns;
         }
         #endregion
@@ -277,27 +277,10 @@ namespace DatabaseMigration.Core
 
         protected List<TablePrimaryKey> GetTablePrimaryKeys(DbConnector dbConnector, string sql)
         {
-            List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
+            List<TablePrimaryKey> tablePrimaryKeys;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
-                {
-                    while (dataReader.Read())
-                    {
-                        TablePrimaryKey tablePrimaryKey = new TablePrimaryKey()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            TableName = dataReader["TableName"]?.ToString(),
-                            KeyName = dataReader["KeyName"]?.ToString(),
-                            ColumnName = dataReader["ColumnName"]?.ToString(),
-                            Order = StringHelper.Convert2Int(dataReader["Order"]?.ToString()) ?? 0,
-                            IsDesc = StringHelper.Convert2Bool(dataReader["IsDesc"]?.ToString())
-                        };
-
-                        tablePrimaryKeys.Add(tablePrimaryKey);
-                    }
-                }
+                tablePrimaryKeys = dbConnection.Query<TablePrimaryKey>(sql).ToList();
             }
 
             return tablePrimaryKeys;
@@ -309,29 +292,10 @@ namespace DatabaseMigration.Core
 
         protected List<TableForeignKey> GetTableForeignKeys(DbConnector dbConnector, string sql)
         {
-            List<TableForeignKey> tableForeignKeys = new List<TableForeignKey>();
+            List<TableForeignKey> tableForeignKeys;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
-                {
-                    while (dataReader.Read())
-                    {
-                        TableForeignKey tableForeignKey = new TableForeignKey()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            TableName = dataReader["TableName"]?.ToString(),
-                            KeyName = dataReader["KeyName"]?.ToString(),
-                            ColumnName = dataReader["ColumnName"]?.ToString(),
-                            ReferencedTableName = dataReader["ReferencedTableName"]?.ToString(),
-                            ReferencedColumnName = dataReader["ReferencedColumnName"]?.ToString(),
-                            UpdateCascade = StringHelper.Convert2Bool(dataReader["UpdateCascade"]?.ToString()),
-                            DeleteCascade = StringHelper.Convert2Bool(dataReader["DeleteCascade"]?.ToString())
-                        };
-
-                        tableForeignKeys.Add(tableForeignKey);
-                    }
-                }
+                tableForeignKeys = dbConnection.Query<TableForeignKey>(sql).ToList();
             }
 
             return tableForeignKeys;
@@ -343,28 +307,10 @@ namespace DatabaseMigration.Core
 
         protected List<TableIndex> GetTableIndexes(DbConnector dbConnector, string sql)
         {
-            List<TableIndex> tableIndexes = new List<TableIndex>();
+            List<TableIndex> tableIndexes;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                DbDataReader dataReader = this.GetDataReader(dbConnection, sql);
-                if (dataReader.HasRows)
-                {
-                    while (dataReader.Read())
-                    {
-                        TableIndex tableIndex = new TableIndex()
-                        {
-                            Owner = dataReader["Owner"]?.ToString(),
-                            TableName = dataReader["TableName"]?.ToString(),
-                            IndexName = dataReader["IndexName"]?.ToString(),
-                            ColumnName = dataReader["ColumnName"]?.ToString(),
-                            Order = StringHelper.Convert2Int(dataReader["Order"]?.ToString()) ?? 0,
-                            IsUnique = StringHelper.Convert2Bool(dataReader["IsUnique"]?.ToString()),
-                            IsDesc = StringHelper.Convert2Bool(dataReader["IsDesc"]?.ToString())
-                        };
-
-                        tableIndexes.Add(tableIndex);
-                    }
-                }
+                tableIndexes = dbConnection.Query<TableIndex>(sql).ToList();
             }
 
             return tableIndexes;
@@ -372,28 +318,28 @@ namespace DatabaseMigration.Core
         #endregion
 
         #region Identity
-        public virtual void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled) { }   
+        public virtual void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled) { }
         #endregion
 
         #region Generate Scripts
 
-        public virtual SchemaInfo GetSchemaInfo(string[] tableNames, string[] userDefinedTypeNames=null, bool getAllIfNotSpecified=true)
+        public virtual SchemaInfo GetSchemaInfo(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
         {
             List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
-            
+
             List<Table> tables = new List<Table>();
             List<TableColumn> columns = new List<TableColumn>();
 
-            if((userDefinedTypeNames!=null && userDefinedTypeNames.Length>0) || getAllIfNotSpecified)
+            if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
             {
                 userDefinedTypes = this.GetUserDefinedTypes(userDefinedTypeNames);
-            }            
+            }
 
             List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
             List<TableForeignKey> tableForeignKeys = new List<TableForeignKey>();
             List<TableIndex> tableIndices = new List<TableIndex>();
 
-            if ((tableNames!=null && tableNames.Length>0) || getAllIfNotSpecified)
+            if ((tableNames != null && tableNames.Length > 0) || getAllIfNotSpecified)
             {
                 tables = this.GetTables(tableNames);
                 columns = this.GetTableColumns(tableNames);
@@ -408,7 +354,7 @@ namespace DatabaseMigration.Core
                 {
                     tableIndices = tableIndices = this.GetTableIndexes(tableNames);
                 }
-            }      
+            }
 
             if (Option.SortTablesByKeyReference && Option.GenerateKey)
             {
@@ -427,7 +373,68 @@ namespace DatabaseMigration.Core
                 tables = tables.OrderBy(item => item.Order).ToList();
             }
 
-            return new SchemaInfo() { UserDefinedTypes=userDefinedTypes, Tables = tables, Columns = columns, TablePrimaryKeys = tablePrimaryKeys, TableForeignKeys = tableForeignKeys, TableIndices = tableIndices };
+            return new SchemaInfo() { UserDefinedTypes = userDefinedTypes, Tables = tables, Columns = columns, TablePrimaryKeys = tablePrimaryKeys, TableForeignKeys = tableForeignKeys, TableIndices = tableIndices };
+        }
+
+        public virtual async Task<SchemaInfo> GetSchemaInfoAsync(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
+        {
+            List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
+
+            List<Table> tables = new List<Table>();
+            List<TableColumn> columns = new List<TableColumn>();
+
+            if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
+            {
+                userDefinedTypes = await this.GetUserDefinedTypesAsync(userDefinedTypeNames);
+            }
+
+            List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
+            List<TableForeignKey> tableForeignKeys = new List<TableForeignKey>();
+            List<TableIndex> tableIndices = new List<TableIndex>();
+
+            if ((tableNames != null && tableNames.Length > 0) || getAllIfNotSpecified)
+            {
+                tables = await this.GetTablesAsync(tableNames);
+                columns = this.GetTableColumns(tableNames);
+
+                if (Option.GenerateKey)
+                {
+                    tablePrimaryKeys = this.GetTablePrimaryKeys(tableNames);
+                    tableForeignKeys = this.GetTableForeignKeys(tableNames);
+                }
+
+                if (Option.GenerateIndex)
+                {
+                    tableIndices = this.GetTableIndexes(tableNames);
+                }
+            }
+
+            if (Option.SortTablesByKeyReference && Option.GenerateKey)
+            {
+                List<string> sortedTableNames = TableReferenceHelper.ResortTableNames(tableNames, tableForeignKeys);
+
+                int i = 1;
+                foreach (string tableName in sortedTableNames)
+                {
+                    Table table = tables.FirstOrDefault(item => item.Name == tableName);
+                    if (table != null)
+                    {
+                        table.Order = i++;
+                    }
+                }
+
+                tables = tables.OrderBy(item => item.Order).ToList();
+            }
+
+            return new SchemaInfo
+            {
+                UserDefinedTypes = userDefinedTypes,
+                Tables = tables,
+                Columns = columns,
+                TablePrimaryKeys = tablePrimaryKeys,
+                TableForeignKeys = tableForeignKeys,
+                TableIndices = tableIndices
+            };
         }
         public abstract string GenerateSchemaScripts(SchemaInfo schemaInfo);
         public abstract string TranslateColumn(Table table, TableColumn column);
@@ -489,7 +496,7 @@ namespace DatabaseMigration.Core
 
                     List<TablePrimaryKey> primaryKeys = schemaInfo.TablePrimaryKeys.Where(item => item.Owner == table.Owner && item.TableName == tableName).ToList();
                     string primaryKeyColumns = string.Join(",", primaryKeys.OrderBy(item => item.Order).Select(item => GetQuotedString(item.ColumnName)));
-                    
+
                     long total = this.GetTableRecordCount(connection, table);
 
                     if (Option.DataGenerateThreshold.HasValue && total > Option.DataGenerateThreshold.Value)
@@ -504,7 +511,10 @@ namespace DatabaseMigration.Core
                     Dictionary<long, List<Dictionary<string, object>>> dictPagedData = new Dictionary<long, List<Dictionary<string, object>>>();
                     if (isSelfReference)
                     {
-                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item => item.Owner == table.Owner && item.TableName == tableName && item.ReferencedTableName == tableName).ColumnName;
+                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item => 
+                            item.Owner == table.Owner 
+                            && item.TableName == tableName 
+                            && item.ReferencedTableName == tableName)?.ColumnName;
 
                         string strWhere = $" WHERE {GetQuotedString(parentColumnName)} IS NULL";
                         dictPagedData = this.GetSortedPageDatas(connection, table, primaryKeyColumns, parentColumnName, columns, Option, strWhere);
@@ -518,7 +528,7 @@ namespace DatabaseMigration.Core
 
                     this.AppendDataScripts(Option, sb, table, columns, dictPagedData);
 
-                    i++;                   
+                    i++;
                 }
             }
 
@@ -553,11 +563,11 @@ namespace DatabaseMigration.Core
                     if (total > 0)
                     {
                         Dictionary<long, List<Dictionary<string, object>>> dictChildPagedData = this.GetSortedPageDatas(connection, table, primaryKeyColumns, parentColumnName, columns, option, whereClause);
-                  
+
                         foreach (var kp in dictChildPagedData)
                         {
                             long pageNumber = dictPagedData.Keys.Max(item => item);
-                            dictPagedData.Add(pageNumber + 1, kp.Value);                            
+                            dictPagedData.Add(pageNumber + 1, kp.Value);
                         }
                     }
                 }
@@ -579,10 +589,37 @@ namespace DatabaseMigration.Core
             {
                 string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
 
-                DbDataReader dataReader = this.GetDataReader(connection, pagedSql);
+                DataTable dataTable = this.GetDataTable(connection, pagedSql);
+                
                 List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    Dictionary<string, object> dicField = new Dictionary<string, object>();
+                    for (var i = 0; i < dataTable.Columns.Count; i++)
+                    {
+                        DataColumn column = dataTable.Columns[i];
+                        string columnName = column.ColumnName;
+                        if (columnName == RowNumberColumnName)
+                        {
+                            continue;
+                        }
 
-                while (dataReader.Read())
+                        TableColumn tableColumn = columns.FirstOrDefault(item => item.ColumnName == columnName);
+
+                        object value = row[i];
+
+                        if (this.IsBytes(value) && this.Option.TreatBytesAsNullForData)
+                        {
+                            value = null;
+                        }
+
+                        object newValue = this.GetInsertValue(tableColumn, value);
+                        dicField.Add(columnName, newValue);
+                    }
+                    
+                    rows.Add(dicField);
+                }
+                /*while (dataReader.Read())
                 {
                     Dictionary<string, object> dicField = new Dictionary<string, object>();
                     for (int i = 0; i < dataReader.FieldCount; i++)
@@ -597,22 +634,21 @@ namespace DatabaseMigration.Core
                             {
                                 value = null;
                             }
-                            
-                            object newValue = this.GetInsertValue(column, value);                           
+
+                            object newValue = this.GetInsertValue(column, value);
 
                             dicField.Add(columnName, newValue);
                         }
                     }
                     rows.Add(dicField);
-                }
-                dataReader.Close();
+                }*/
 
                 dictPagedData.Add(pageNumber, rows);
 
                 if (this.OnDataRead != null)
                 {
                     this.FeedbackInfo($"Transfer data from table {table.Name}, rows:{rows.Count}.");
-                    this.OnDataRead(table, columns, rows);
+                    this.OnDataRead(table, columns, rows, dataTable);
                 }
             }
 
@@ -774,7 +810,7 @@ namespace DatabaseMigration.Core
                 }
             }
 
-            valuesWithoutParameter = $"({string.Join(",", values.Select(item => parameterPlaceholders.Contains(item)? "NULL": item))})";
+            valuesWithoutParameter = $"({string.Join(",", values.Select(item => parameterPlaceholders.Contains(item) ? "NULL" : item))})";
 
             return $"({string.Join(",", values.Select(item => item))})";
         }
@@ -806,9 +842,9 @@ namespace DatabaseMigration.Core
                 {
                     return "NULL";
                 }
-                else if (type == typeof(Byte[])) 
+                else if (type == typeof(Byte[]))
                 {
-                    if(((Byte[])value).Length == 16) //GUID
+                    if (((Byte[])value).Length == 16) //GUID
                     {
                         if (this.GetType() == typeof(SqlServerInterpreter) && column.DataType.ToLower() == "uniqueidentifier")
                         {

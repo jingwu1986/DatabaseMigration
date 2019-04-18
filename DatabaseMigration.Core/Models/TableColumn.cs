@@ -12,7 +12,8 @@ namespace DatabaseMigration.Core
         public string TableName { get; set; }
         public string ColumnName { get; set; }
         public string DataType { get; set; }
-        public bool IsRequired { get; set; }
+        public bool IsRequired => !IsNullable;
+        public bool IsNullable { get; set; }
         public bool IsIdentity { get; set; }
         public long? MaxLength { get; set; }
         public int? Precision { get; set; }

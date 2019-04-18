@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DatabaseMigration.Core
+﻿namespace DatabaseMigration.Core
 {
     public class UserDefinedType
     {
@@ -14,6 +8,9 @@ namespace DatabaseMigration.Core
         public int MaxLength { get; set; }
         public int Precision { get; set; }
         public int Scale { get; set; }
-        public bool IsRequired { get; set; }
+
+        public bool IsRequired => !IsNullable;
+
+        public bool IsNullable { get; set; }
     }
 }

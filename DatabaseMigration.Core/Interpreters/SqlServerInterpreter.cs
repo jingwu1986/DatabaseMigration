@@ -23,6 +23,25 @@ namespace DatabaseMigration.Core
         #endregion
 
         #region Common Method
+        public override async Task<int> BulkCopyAsync(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            return 0;
+        }
+        public override int BulkCopy(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            return 0;
+        }
+
         public override DbConnector GetDbConnector()
         {
             return new DbConnector(new SqlServerProvider(), new SqlServerConnectionBuilder(), this.ConnectionInfo);
@@ -49,29 +68,44 @@ namespace DatabaseMigration.Core
         #endregion 
         
         #region User Defined Type
-        public override List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames)
-        {
-            DbConnector dbConnector = this.GetDbConnector();
 
+        private string GetSqlForGetUserDefinedTypes(params string[] typeNames)
+        {
             string sql = @"SELECT schema_name(T.schema_id) AS [Owner],T.name as Name, ST.name AS Type, T.max_length AS MaxLength, T.precision AS Precision,T.scale AS Scale,T.is_nullable AS IsNullable
                             FROM sys.types T JOIN sys.systypes ST ON T.system_type_id=ST.xusertype
                             WHERE is_user_defined=1";
 
-            if (typeNames != null && typeNames.Count() > 0)
+            if (typeNames != null && typeNames.Any())
             {
                 string strTableNames = StringHelper.GetSingleQuotedString(typeNames);
                 sql += $" AND T.name in ({ strTableNames })";
             }
 
+            return sql;
+        }
+        public override List<UserDefinedType> GetUserDefinedTypes(params string[] typeNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetUserDefinedTypes(typeNames);
+
             return base.GetUserDefinedTypes(dbConnector, sql);
+        }
+
+        public override async Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetUserDefinedTypes(typeNames);
+
+            return await base.GetUserDefinedTypesAsync(dbConnector, sql);
         }
         #endregion
 
         #region Table
-        public override List<Table> GetTables(params string[] tableNames)
-        {
-            DbConnector dbConnector = this.GetDbConnector();
 
+        private string GetSqlForGetTables(params string[] tableNames)
+        {
             string sql = $@"SELECT schema_name(t.schema_id) as [Owner], t.name as Name, ext2.value as [Comment],
                         IDENT_SEED(schema_name(t.schema_id)+'.'+t.name) AS IdentitySeed,IDENT_INCR(schema_name(t.schema_id)+'.'+t.name) AS IdentityIncrement
                         FROM sys.tables t
@@ -80,7 +114,7 @@ namespace DatabaseMigration.Core
                         WHERE t.is_ms_shipped=0 AND ext.class is null
                        ";
 
-            if (tableNames != null && tableNames.Count()>0)
+            if (tableNames != null && tableNames.Any())
             {
                 string strTableNames = StringHelper.GetSingleQuotedString(tableNames);
                 sql += $" AND t.name in ({ strTableNames })";
@@ -88,8 +122,24 @@ namespace DatabaseMigration.Core
 
             sql += " ORDER BY t.name";
 
+            return sql;
+        }
+        public override List<Table> GetTables(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
 
             return base.GetTables(dbConnector, sql);
+        }
+
+        public override async Task<List<Table>> GetTablesAsync(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
+
+            return await base.GetTablesAsync(dbConnector, sql);
         }
         #endregion
 
@@ -98,8 +148,20 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
-            string sql = @"SELECT schema_name(T.schema_id) AS [Owner], T.name AS TableName,C.name AS ColumnName, ST.name AS DataType,C.is_nullable AS IsNullable,C.max_length AS MaxLength, C.precision AS Precision,C.column_id as [Order], 
-                           C.scale AS Scale,SCO.text As DefaultValue, EXT.value AS [Comment],C.is_identity AS IsIdentity,STY.is_user_defined AS IsUserDefined,schema_name(STY.schema_id) AS [TypeOwner]
+            string sql = @"SELECT schema_name(T.schema_id) AS [Owner], 
+                            T.name AS TableName,
+                            C.name AS ColumnName, 
+                            ST.name AS DataType,
+                            C.is_nullable AS IsNullable,
+                            C.max_length AS MaxLength, 
+                            C.precision AS Precision,
+                            C.column_id as [Order], 
+                            C.scale AS Scale,
+                            SCO.text As DefaultValue, 
+                            EXT.value AS [Comment],
+                            C.is_identity AS IsIdentity,
+                            STY.is_user_defined AS IsUserDefined,
+                            schema_name(STY.schema_id) AS [TypeOwner]
                         FROM sys.columns C 
                         JOIN sys.systypes ST ON C.user_type_id = ST.xusertype
                         JOIN sys.tables T ON C.object_id=T.object_id

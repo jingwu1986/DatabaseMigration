@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DatabaseMigration.Core
 {
@@ -21,13 +18,13 @@ namespace DatabaseMigration.Core
             {
                 dbInterpreter = (DbInterpreter)Activator.CreateInstance(type, connectionInfo, generateScriptOption);
 
-                if(dbInterpreter!=null && dbInterpreter.DatabaseType==dbType)
+                if (dbInterpreter.DatabaseType == dbType)
                 {
                     return dbInterpreter;
                 }
             }
-           
+
             return dbInterpreter;
-        }       
+        }
     }
 }

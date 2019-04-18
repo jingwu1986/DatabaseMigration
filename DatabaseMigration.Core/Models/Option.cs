@@ -15,7 +15,7 @@ namespace DatabaseMigration.Core
         public bool GenerateComment { get; set; } = true;       
         public bool GenerateIdentity { get; set; } = false;
         public bool InsertIdentityValue { get; set; } = true;
-        public int? DataGenerateThreshold { get; set; } = 100000;
+        public int? DataGenerateThreshold { get; set; } = 10000000;
         public int InQueryItemLimitCount { get; set; } = 2000;
         public GenerateScriptMode ScriptMode { get; set; }
         public GenerateScriptOutputMode ScriptOutputMode { get; set; }

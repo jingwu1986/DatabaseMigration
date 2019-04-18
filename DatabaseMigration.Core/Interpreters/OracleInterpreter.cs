@@ -1,6 +1,7 @@
 ﻿using Oracle.ManagedDataAccess.Client;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
@@ -20,6 +21,26 @@ namespace DatabaseMigration.Core
         #endregion
 
         #region Common Method
+        public override async Task<int> BulkCopyAsync(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            return 0;
+        }
+        public override int BulkCopy(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            return 0;
+        }
+
+
         public OracleInterpreter(ConnectionInfo connectionInfo, GenerateScriptOption options) : base(connectionInfo, options) { }
 
         public override DbConnector GetDbConnector()
@@ -52,13 +73,17 @@ namespace DatabaseMigration.Core
         {
             return new List<UserDefinedType>();
         }
+
+        public override async Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames)
+        {
+            return await Task.Run(() => GetUserDefinedTypes(typeNames));
+        }
         #endregion
 
         #region Table
-        public override List<Table> GetTables(params string[] tableNames)
-        {
-            DbConnector dbConnector = this.GetDbConnector();
 
+        private string GetSqlForGetTables(params string[] tableNames)
+        {
             string sql = $@"SELECT T.OWNER AS ""Owner"", T.TABLE_NAME AS ""Name"", C.COMMENTS AS ""Comment"",
                           1 AS ""IdentitySeed"", 1 AS ""IdentityIncrement""
                           FROM ALL_TABLES T
@@ -73,7 +98,24 @@ namespace DatabaseMigration.Core
 
             sql += " ORDER BY T.TABLE_NAME";
 
+            return sql;
+        }
+        public override List<Table> GetTables(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
+
             return base.GetTables(dbConnector, sql);
+        }
+
+        public override async Task<List<Table>> GetTablesAsync(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
+
+            return await base.GetTablesAsync(dbConnector, sql);
         }
         #endregion
 
@@ -166,8 +208,8 @@ namespace DatabaseMigration.Core
         #region Generate Schema Script 
 
         public override string GenerateSchemaScripts(SchemaInfo schemaInfo)
-        {          
-            StringBuilder sb = new StringBuilder();            
+        {
+            StringBuilder sb = new StringBuilder();
 
             #region Create Table
             foreach (Table table in schemaInfo.Tables)
@@ -184,7 +226,7 @@ namespace DatabaseMigration.Core
                 sb.Append(
 $@"
 CREATE TABLE {quotedTableName}(
-{string.Join(","+Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item) )).TrimEnd(',')}
+{string.Join("," + Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item))).TrimEnd(',')}
 )
 TABLESPACE
 {this.ConnectionInfo.Database};");
@@ -218,7 +260,7 @@ TABLESPACE
 {this.ConnectionInfo.Database}
 ;";
                     sb.Append(primaryKey);
-                } 
+                }
                 #endregion
 
                 #region Foreign Key
@@ -235,7 +277,7 @@ TABLESPACE
                         foreach (string keyName in keyNames)
                         {
                             TableForeignKey tableForeignKey = foreignKeyLookup[keyName].First();
-                           
+
                             string columnNames = string.Join(",", foreignKeyLookup[keyName].Select(item => $"{GetQuotedString(item.ColumnName)}"));
                             string referenceColumnName = string.Join(",", foreignKeyLookup[keyName].Select(item => $"{GetQuotedString(item.ReferencedColumnName)}"));
 
@@ -315,7 +357,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 if (isChar)
                 {
                     long? dataLength = column.MaxLength;
-                    if(dataLength>0 && dataType.StartsWith("n"))
+                    if (dataLength > 0 && dataType.StartsWith("n"))
                     {
                         dataLength = dataLength / 2;
                     }
@@ -325,7 +367,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 else if (!this.IsNoLengthDataType(dataType))
                 {
                     dataType = $"{dataType}";
-                    if(!(column.Precision==0 && column.Scale==0))
+                    if (!(column.Precision == 0 && column.Scale == 0))
                     {
                         long precision = column.Precision.HasValue ? column.Precision.Value : column.MaxLength.Value;
                         int scale = column.Scale.HasValue ? column.Scale.Value : 0;
@@ -337,9 +379,9 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                         else
                         {
                             dataType = $"{dataType}({precision},{scale})";
-                        }                       
+                        }
                     }
-                    else if(column.MaxLength>0)
+                    else if (column.MaxLength > 0)
                     {
                         dataType += $"({column.MaxLength})";
                     }
@@ -365,7 +407,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
 
             return base.GetTableRecordCount(connection, sql);
         }
-        
+
         public override string GenerateDataScripts(SchemaInfo schemaInfo)
         {
             return base.GenerateDataScripts(schemaInfo);
@@ -378,7 +420,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
 
         protected override string GetBatchInsertItemBefore(string tableName, bool isFirstRow)
         {
-            return isFirstRow? "" : $"INTO {tableName} VALUES";
+            return isFirstRow ? "" : $"INTO {tableName} VALUES";
         }
 
         protected override string GetBatchInsertItemEnd(bool isAllEnd)
@@ -410,10 +452,10 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
 
         protected override bool NeedInsertParameter(object value)
         {
-            if(value!=null && value.GetType()==typeof(string))
+            if (value != null && value.GetType() == typeof(string))
             {
                 string str = value.ToString();
-                if(str.Length>4000 || (str.Contains(SEMICOLON_FUNC) && str.Length> 2000))
+                if (str.Length > 4000 || (str.Contains(SEMICOLON_FUNC) && str.Length > 2000))
                 {
                     return true;
                 }
