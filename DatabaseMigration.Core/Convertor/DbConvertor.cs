@@ -103,7 +103,7 @@ namespace DatabaseMigration.Core
                 {
                     if (targetInterpreter is SqlServerInterpreter)
                     {
-                        string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                        string[] scriptItems = script.Split(new[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
                         scriptItems.ToList().ForEach(item =>
                         {
@@ -117,8 +117,8 @@ namespace DatabaseMigration.Core
                 }
                 else
                 {
-                    string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
-                    int count = sqls.Count();
+                    string[] sqls = script.Split(new[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+                    int count = sqls.Length;
 
                     int i = 0;
                     foreach (string sql in sqls)
@@ -170,7 +170,15 @@ namespace DatabaseMigration.Core
 
                             Dictionary<string, object> paramters = targetInterpreter.AppendDataScripts(this.Target.DbInterpreter.Option, sb, targetTableAndColumns.Table, targetTableAndColumns.Columns, new Dictionary<long, List<Dictionary<string, object>>>() { { 1, data } });
 
-                            script = sb.ToString();
+                            try
+                            {
+                                script = sb.ToString();
+                                sb.Clear();
+                            }
+                            catch (OutOfMemoryException e)
+                            {
+                                sb.Clear();
+                            }
 
                             if (!this.Option.SplitScriptsToExecute)
                             {
@@ -201,8 +209,7 @@ namespace DatabaseMigration.Core
                             {
                                 SourceServer = sourceConnectionInfo.Server,
                                 SourceDatabase = sourceConnectionInfo.Database,
-                                SourceTableName = table.Name
-                            ,
+                                SourceTableName = table.Name,
                                 TargetServer = targetConnectionInfo.Server,
                                 TargetDatabase = targetConnectionInfo.Database,
                                 TargetTableName = table.Name
@@ -357,7 +364,16 @@ namespace DatabaseMigration.Core
 
                             Dictionary<string, object> paramters = targetInterpreter.AppendDataScripts(this.Target.DbInterpreter.Option, sb, targetTableAndColumns.Table, targetTableAndColumns.Columns, new Dictionary<long, List<Dictionary<string, object>>>() { { 1, data } });
 
-                            script = sb.ToString();
+                            try
+                            {
+                                script = sb.ToString();
+                                sb.Clear();
+                            }
+                            catch (OutOfMemoryException e)
+                            {
+                                sb.Clear();
+                            }
+                           
 
                             if (!this.Option.SplitScriptsToExecute)
                             {
@@ -388,8 +404,7 @@ namespace DatabaseMigration.Core
                             {
                                 SourceServer = sourceConnectionInfo.Server,
                                 SourceDatabase = sourceConnectionInfo.Database,
-                                SourceTableName = table.Name
-                            ,
+                                SourceTableName = table.Name,
                                 TargetServer = targetConnectionInfo.Server,
                                 TargetDatabase = targetConnectionInfo.Database,
                                 TargetTableName = table.Name
@@ -397,7 +412,7 @@ namespace DatabaseMigration.Core
                         }
                     };
 
-                    sourceInterpreter.GenerateDataScripts(sourceSchemaInfo);
+                    await sourceInterpreter.GenerateDataScriptsAsync(sourceSchemaInfo);
 
                     identityTableColumns.ForEach(item =>
                     {

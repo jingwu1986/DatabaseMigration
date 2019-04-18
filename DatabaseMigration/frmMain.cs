@@ -478,7 +478,7 @@ namespace DatabaseMigration
             }
             else if (targetDbType == DatabaseType.MySql)
             {
-                //target.DbInterpreter.Option.RemoveEmoji = true;
+                target.DbInterpreter.Option.RemoveEmoji = true;
             }
             else if (targetDbType == DatabaseType.Oracle)
             {
@@ -533,10 +533,9 @@ namespace DatabaseMigration
                 this.btnExecute.Enabled = true;
                 this.btnCancel.Enabled = false;
 
-                if (ex is TableDataTransferException)
+                if (ex is TableDataTransferException dataException)
                 {
-                    TableDataTransferException dataException = ex as TableDataTransferException;
-                    DataTransferErrorProfileManager.Save(new DataTransferErrorProfile()
+                    DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
                     {
                         SourceServer = dataException.SourceServer,
                         SourceDatabase = dataException.SourceDatabase,

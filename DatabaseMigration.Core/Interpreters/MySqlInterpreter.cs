@@ -621,11 +621,20 @@ DEFAULT CHARSET={DbCharset};");
 
             return base.GetTableRecordCount(connection, sql);
         }
+        public override async Task<long> GetTableRecordCountAsync(DbConnection connection, Table table)
+        {
+            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
+
+            return await base.GetTableRecordCountAsync(connection, sql);
+        }
         public override string GenerateDataScripts(SchemaInfo schemaInfo)
         {
             return base.GenerateDataScripts(schemaInfo);
         }
-
+        public override async Task<string> GenerateDataScriptsAsync(SchemaInfo schemaInfo)
+        {
+            return await base.GenerateDataScriptsAsync(schemaInfo);
+        }
         protected override string GetPagedSql(string tableName, string columnNames, string primaryKeyColumns, string whereClause, long pageNumber, int pageSize)
         {
             var startEndRowNumber = PaginationHelper.GetStartEndRowNumber(pageNumber, pageSize);

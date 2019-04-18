@@ -96,9 +96,17 @@ namespace DatabaseMigration.Core
 
         protected DataTable GetDataTable(DbConnection dbConnection, string sql)
         {
-            DbCommander dbCommander = new DbCommander(dbConnection, System.Data.CommandType.Text, sql);
-            DataTable table = dbCommander.ExecteDataTable();
-            return table;
+            var reader = dbConnection.ExecuteReader(sql);
+            var dt = new DataTable();
+            dt.Load(reader);
+            return dt;
+        }
+        protected async Task<DataTable> GetDataTableAsync(DbConnection dbConnection, string sql)
+        {
+            var reader = await dbConnection.ExecuteReaderAsync(sql);
+            var dt = new DataTable();
+            dt.Load(reader);
+            return dt;
         }
 
         public void ExecuteNonQuery(string sql, Dictionary<string, object> paramaters = null)
@@ -352,7 +360,7 @@ namespace DatabaseMigration.Core
 
                 if (Option.GenerateIndex)
                 {
-                    tableIndices = tableIndices = this.GetTableIndexes(tableNames);
+                    tableIndices = this.GetTableIndexes(tableNames);
                 }
             }
 
@@ -440,14 +448,15 @@ namespace DatabaseMigration.Core
         public abstract string TranslateColumn(Table table, TableColumn column);
 
         public abstract long GetTableRecordCount(DbConnection connection, Table table);
+        public abstract Task<long> GetTableRecordCountAsync(DbConnection connection, Table table);
         protected long GetTableRecordCount(DbConnection connection, string sql)
         {
-            object obj = this.GetScalar(connection, sql);
-            if (obj != null)
-            {
-                return Convert.ToInt64(obj);
-            }
-            return 0;
+            return connection.ExecuteScalar<long>(sql);
+        }
+
+        protected async Task<long> GetTableRecordCountAsync(DbConnection connection, string sql)
+        {
+            return await connection.ExecuteScalarAsync<long>(sql);
         }
 
         public virtual string GenerateDataScripts(SchemaInfo schemaInfo)
@@ -508,12 +517,12 @@ namespace DatabaseMigration.Core
 
                     this.FeedbackInfo($"{strTableCount}Begin to read data from table {table.Name}, total rows:{total}.");
 
-                    Dictionary<long, List<Dictionary<string, object>>> dictPagedData = new Dictionary<long, List<Dictionary<string, object>>>();
+                    Dictionary<long, List<Dictionary<string, object>>> dictPagedData;
                     if (isSelfReference)
                     {
-                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item => 
-                            item.Owner == table.Owner 
-                            && item.TableName == tableName 
+                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item =>
+                            item.Owner == table.Owner
+                            && item.TableName == tableName
                             && item.ReferencedTableName == tableName)?.ColumnName;
 
                         string strWhere = $" WHERE {GetQuotedString(parentColumnName)} IS NULL";
@@ -521,7 +530,7 @@ namespace DatabaseMigration.Core
                     }
                     else
                     {
-                        dictPagedData = this.GetPagedDatas(connection, table, columns, primaryKeyColumns, total, pageSize);
+                        dictPagedData = this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize);
                     }
 
                     this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
@@ -534,21 +543,103 @@ namespace DatabaseMigration.Core
 
             return sb.ToString();
         }
+        public virtual async Task<string> GenerateDataScriptsAsync(SchemaInfo schemaInfo)
+        {
+            StringBuilder sb = new StringBuilder();
 
+            if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
+            {
+                this.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+            }
+
+            int i = 0;
+            int pickupIndex = -1;
+            if (schemaInfo.PickupTable != null)
+            {
+                foreach (Table table in schemaInfo.Tables)
+                {
+                    if (table.Owner == schemaInfo.PickupTable.Owner && table.Name == schemaInfo.PickupTable.Name)
+                    {
+                        pickupIndex = i;
+                        break;
+                    }
+                    i++;
+                }
+            }
+
+            i = 0;
+            using (DbConnection connection = this.GetDbConnector().CreateConnection())
+            {
+                int tableCount = schemaInfo.Tables.Count - (pickupIndex == -1 ? 0 : pickupIndex + 1);
+                int count = 0;
+                foreach (Table table in schemaInfo.Tables)
+                {
+                    if (i < pickupIndex)
+                    {
+                        i++;
+                        continue;
+                    }
+
+                    count++;
+                    string strTableCount = $"({count}/{tableCount})";
+                    string tableName = table.Name;
+                    List<TableColumn> columns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName).OrderBy(item => item.Order).ToList();
+
+                    bool isSelfReference = TableReferenceHelper.IsSelfReference(tableName, schemaInfo.TableForeignKeys);
+
+                    List<TablePrimaryKey> primaryKeys = schemaInfo.TablePrimaryKeys.Where(item => item.Owner == table.Owner && item.TableName == tableName).ToList();
+                    string primaryKeyColumns = string.Join(",", primaryKeys.OrderBy(item => item.Order).Select(item => GetQuotedString(item.ColumnName)));
+
+                    long total = await this.GetTableRecordCountAsync(connection, table);
+
+                    if (Option.DataGenerateThreshold.HasValue && total > Option.DataGenerateThreshold.Value)
+                    {
+                        continue;
+                    }
+
+                    int pageSize = Option.DataBatchSize;
+
+                    this.FeedbackInfo($"{strTableCount}Begin to read data from table {table.Name}, total rows:{total}.");
+
+                    Dictionary<long, List<Dictionary<string, object>>> dictPagedData;
+                    if (isSelfReference)
+                    {
+                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item =>
+                            item.Owner == table.Owner
+                            && item.TableName == tableName
+                            && item.ReferencedTableName == tableName)?.ColumnName;
+
+                        string strWhere = $" WHERE {GetQuotedString(parentColumnName)} IS NULL";
+                        dictPagedData = this.GetSortedPageDatas(connection, table, primaryKeyColumns, parentColumnName, columns, Option, strWhere);
+                    }
+                    else
+                    {
+                        dictPagedData = await this.GetPagedDataListAsync(connection, table, columns, primaryKeyColumns, total, pageSize);
+                    }
+
+                    this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
+
+                    this.AppendDataScripts(Option, sb, table, columns, dictPagedData);
+
+                    i++;
+                }
+            }
+
+            return sb.ToString();
+        }
         private Dictionary<long, List<Dictionary<string, object>>> GetSortedPageDatas(DbConnection connection, Table table, string primaryKeyColumns, string parentColumnName, List<TableColumn> columns, GenerateScriptOption option, string whereClause = "")
         {
-            string columnNames = this.GetQuotedColumnNames(columns);
             string quotedTableName = this.GetQuotedTableName(table);
 
             int pageSize = option.DataBatchSize;
 
             long total = Convert.ToInt64(this.GetScalar(connection, $"SELECT COUNT(1) FROM {quotedTableName} {whereClause}"));
 
-            Dictionary<long, List<Dictionary<string, object>>> dictPagedData = this.GetPagedDatas(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause);
+            var dictPagedData = this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause);
 
-            List<object> parentValues = dictPagedData.Values.SelectMany(item => item.Select(t => t[primaryKeyColumns.Trim(new char[] { QuotationLeftChar, QuotationRightChar })])).ToList();
+            List<object> parentValues = dictPagedData.Values.SelectMany(item => item.Select(t => t[primaryKeyColumns.Trim(QuotationLeftChar, QuotationRightChar)])).ToList();
 
-            if (parentValues != null && parentValues.Count > 0)
+            if (parentValues.Count > 0)
             {
                 TableColumn parentColumn = columns.FirstOrDefault(item => item.Owner == table.Owner && item.ColumnName == parentColumnName);
 
@@ -576,7 +667,7 @@ namespace DatabaseMigration.Core
             return dictPagedData;
         }
 
-        private Dictionary<long, List<Dictionary<string, object>>> GetPagedDatas(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
+        private Dictionary<long, List<Dictionary<string, object>>> GetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
         {
             string quotedTableName = this.GetQuotedTableName(table);
             string columnNames = this.GetQuotedColumnNames(columns);
@@ -590,7 +681,7 @@ namespace DatabaseMigration.Core
                 string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
 
                 DataTable dataTable = this.GetDataTable(connection, pagedSql);
-                
+
                 List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
                 foreach (DataRow row in dataTable.Rows)
                 {
@@ -616,7 +707,7 @@ namespace DatabaseMigration.Core
                         object newValue = this.GetInsertValue(tableColumn, value);
                         dicField.Add(columnName, newValue);
                     }
-                    
+
                     rows.Add(dicField);
                 }
                 /*while (dataReader.Read())
@@ -642,6 +733,61 @@ namespace DatabaseMigration.Core
                     }
                     rows.Add(dicField);
                 }*/
+
+                dictPagedData.Add(pageNumber, rows);
+
+                if (this.OnDataRead != null)
+                {
+                    this.FeedbackInfo($"Transfer data from table {table.Name}, rows:{rows.Count}.");
+                    this.OnDataRead(table, columns, rows, dataTable);
+                }
+            }
+
+            return dictPagedData;
+        }
+        private async Task<Dictionary<long, List<Dictionary<string, object>>>> GetPagedDataListAsync(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
+        {
+            string quotedTableName = this.GetQuotedTableName(table);
+            string columnNames = this.GetQuotedColumnNames(columns);
+
+            var dictPagedData = new Dictionary<long, List<Dictionary<string, object>>>();
+
+            long pageCount = PaginationHelper.GetPageCount(total, pageSize);
+
+            for (long pageNumber = 1; pageNumber <= pageCount; pageNumber++)
+            {
+                string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
+
+                var dataTable = await this.GetDataTableAsync(connection, pagedSql);
+
+                List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
+                foreach (DataRow row in dataTable.Rows)
+                {
+                    var dicField = new Dictionary<string, object>();
+                    for (var i = 0; i < dataTable.Columns.Count; i++)
+                    {
+                        DataColumn column = dataTable.Columns[i];
+                        string columnName = column.ColumnName;
+                        if (columnName == RowNumberColumnName)
+                        {
+                            continue;
+                        }
+
+                        TableColumn tableColumn = columns.FirstOrDefault(item => item.ColumnName == columnName);
+
+                        object value = row[i];
+
+                        if (this.IsBytes(value) && this.Option.TreatBytesAsNullForData)
+                        {
+                            value = null;
+                        }
+
+                        object newValue = this.GetInsertValue(tableColumn, value);
+                        dicField.Add(columnName, newValue);
+                    }
+
+                    rows.Add(dicField);
+                }
 
                 dictPagedData.Add(pageNumber, rows);
 
@@ -693,14 +839,11 @@ namespace DatabaseMigration.Core
                 }
 
                 int rowCount = 0;
-                foreach (Dictionary<string, object> row in kp.Value)
+                foreach (var row in kp.Value)
                 {
                     rowCount++;
 
-                    Dictionary<string, object> insertParameters;
-
-                    string valuesWithoutParameter = "";
-                    string values = this.GetInsertValues(columns, excludeColumnNames, rowCount - 1, row, out insertParameters, out valuesWithoutParameter);
+                    string values = this.GetInsertValues(columns, excludeColumnNames, rowCount - 1, row, out var insertParameters, out var valuesWithoutParameter);
 
                     if (insertParameters != null)
                     {
