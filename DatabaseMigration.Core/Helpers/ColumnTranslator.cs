@@ -9,10 +9,10 @@ using System.Xml.Linq;
 namespace DatabaseMigration.Core
 {
     public class ColumnTranslator
-    {       
+    {
         public static List<TableColumn> TranslateColumn(List<TableColumn> columns, DatabaseType sourceDbType, DatabaseType targetDbType)
         {
-            if(sourceDbType==targetDbType)
+            if (sourceDbType == targetDbType)
             {
                 return columns;
             }
@@ -38,15 +38,15 @@ namespace DatabaseMigration.Core
             XDocument functionMappingDoc = XDocument.Load(functionMappingFilePath);
             List<IEnumerable<FunctionMapping>> functionMappings = functionMappingDoc.Root.Elements("mapping").Select(item =>
             item.Elements().Select(t => new FunctionMapping() { DbType = t.Name.ToString(), Function = t.Value }))
-            .ToList(); 
+            .ToList();
             #endregion
 
             foreach (TableColumn column in columns)
             {
                 string sourceDataType = GetTrimedDataType(column);
                 column.DataType = sourceDataType;
-                DataTypeMapping dataTypeMapping = dataTypeMappings.FirstOrDefault(item=>item.Source.Type?.ToLower()==column.DataType?.ToLower());
-                if(dataTypeMapping!=null)
+                DataTypeMapping dataTypeMapping = dataTypeMappings.FirstOrDefault(item => item.Source.Type?.ToLower() == column.DataType?.ToLower());
+                if (dataTypeMapping != null)
                 {
                     column.DataType = dataTypeMapping.Tareget.Type;
 
@@ -54,16 +54,16 @@ namespace DatabaseMigration.Core
 
                     if (isChar)
                     {
-                        if(!string.IsNullOrEmpty(dataTypeMapping.Tareget.Length))
+                        if (!string.IsNullOrEmpty(dataTypeMapping.Tareget.Length))
                         {
-                            column.MaxLength = int.Parse(dataTypeMapping.Tareget.Length);                           
+                            column.MaxLength = int.Parse(dataTypeMapping.Tareget.Length);
                         }
 
                         bool hasSpecial = false;
-                        if(dataTypeMapping.Specials!=null && dataTypeMapping.Specials.Count>0)
-                        {                            
-                            DataTypeMappingSpecial special = dataTypeMapping.Specials.FirstOrDefault(item=>item.SourceMaxLength==column.MaxLength.ToString());
-                            if(special != null)
+                        if (dataTypeMapping.Specials != null && dataTypeMapping.Specials.Count > 0)
+                        {
+                            DataTypeMappingSpecial special = dataTypeMapping.Specials.FirstOrDefault(item => item.SourceMaxLength == column.MaxLength.ToString());
+                            if (special != null)
                             {
                                 column.DataType = special.Type;
                                 hasSpecial = true;
@@ -72,7 +72,7 @@ namespace DatabaseMigration.Core
                                 {
                                     column.MaxLength = int.Parse(special.TargetMaxLength);
                                 }
-                            }                            
+                            }
                         }
 
                         if (!hasSpecial && column.DataType.ToLower().StartsWith("n")) //nchar,nvarchar
@@ -83,7 +83,7 @@ namespace DatabaseMigration.Core
                             }
                         }
 
-                       
+
                     }
                     else
                     {
@@ -92,7 +92,7 @@ namespace DatabaseMigration.Core
                             DataTypeMappingSpecial special = dataTypeMapping.Specials.FirstOrDefault(item => item.SourceMaxLength == column.MaxLength.ToString());
                             if (special != null)
                             {
-                                column.DataType = special.Type;                                
+                                column.DataType = special.Type;
                             }
                             else
                             {
@@ -103,7 +103,7 @@ namespace DatabaseMigration.Core
                                 }
                             }
 
-                            if (special!=null && !string.IsNullOrEmpty(special.TargetMaxLength))
+                            if (special != null && !string.IsNullOrEmpty(special.TargetMaxLength))
                             {
                                 column.MaxLength = int.Parse(special.TargetMaxLength);
                             }
@@ -112,22 +112,22 @@ namespace DatabaseMigration.Core
                         if (!string.IsNullOrEmpty(dataTypeMapping.Tareget.Precision))
                         {
                             column.Precision = int.Parse(dataTypeMapping.Tareget.Precision);
-                        }                        
+                        }
 
-                        if(!string.IsNullOrEmpty(dataTypeMapping.Tareget.Scale))
+                        if (!string.IsNullOrEmpty(dataTypeMapping.Tareget.Scale))
                         {
                             column.Scale = int.Parse(dataTypeMapping.Tareget.Scale);
                         }
-                    }             
+                    }
                 }
 
-                if(!string.IsNullOrEmpty(column.DefaultValue))
+                if (!string.IsNullOrEmpty(column.DefaultValue))
                 {
-                    string defaultValue = sourceDbType==DatabaseType.SqlServer? GetTrimedDefaultValue(column.DefaultValue):GetQuotedDefaultValue(column.DefaultValue);
+                    string defaultValue = sourceDbType == DatabaseType.SqlServer ? GetTrimedDefaultValue(column.DefaultValue) : GetQuotedDefaultValue(column.DefaultValue);
                     IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function == defaultValue));
                     if (funcMappings != null)
                     {
-                        defaultValue = funcMappings.FirstOrDefault(item=>item.DbType==targetDbType.ToString())?.Function;
+                        defaultValue = funcMappings.FirstOrDefault(item => item.DbType == targetDbType.ToString())?.Function;
                     }
                     column.DefaultValue = defaultValue;
                 }
@@ -140,7 +140,7 @@ namespace DatabaseMigration.Core
         {
             string dataType = column.DataType;
             int index = dataType.IndexOf("(");
-            if(index>0)
+            if (index > 0)
             {
                 return dataType.Substring(0, index);
             }
@@ -149,10 +149,10 @@ namespace DatabaseMigration.Core
 
         private static string GetTrimedDefaultValue(string defaultValue)
         {
-            if(!string.IsNullOrEmpty(defaultValue))
+            if (!string.IsNullOrEmpty(defaultValue))
             {
                 defaultValue = defaultValue.TrimStart('(').TrimEnd(')');
-                if(defaultValue.EndsWith("("))
+                if (defaultValue.EndsWith("("))
                 {
                     defaultValue += ")";
                 }
@@ -165,7 +165,7 @@ namespace DatabaseMigration.Core
         {
             if (!string.IsNullOrEmpty(defaultValue))
             {
-                if(!(defaultValue.StartsWith("(") && defaultValue.EndsWith(")")))
+                if (!(defaultValue.StartsWith("(") && defaultValue.EndsWith(")")))
                 {
                     return "(" + defaultValue + ")";
                 }
