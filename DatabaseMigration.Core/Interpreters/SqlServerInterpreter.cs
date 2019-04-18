@@ -153,7 +153,7 @@ namespace DatabaseMigration.Core
                             C.name AS ColumnName, 
                             ST.name AS DataType,
                             C.is_nullable AS IsNullable,
-                            C.max_length AS MaxLength, 
+                            COLUMNPROPERTY(C.object_id,C.name,'PRECISION') AS MaxLength, 
                             C.precision AS Precision,
                             C.column_id as [Order], 
                             C.scale AS Scale,
