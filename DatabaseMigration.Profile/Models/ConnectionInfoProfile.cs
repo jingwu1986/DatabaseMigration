@@ -1,8 +1,4 @@
 ﻿using DatabaseMigration.Core;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Xml.Linq;
 
 namespace DatabaseMigration.Profile
 {
@@ -13,13 +9,7 @@ namespace DatabaseMigration.Profile
         public ConnectionInfo ConnectionInfo { get; set; } 
         public bool RememberPassword { get; set; }
 
-        public string ConnectionDescription
-        {
-            get
-            {
-                return $"server={this.ConnectionInfo?.Server};database={this.ConnectionInfo?.Database}";
-            }
-        }
+        public string ConnectionDescription => $"server={this.ConnectionInfo?.Server};database={this.ConnectionInfo?.Database}";
 
         public string Description
         {
