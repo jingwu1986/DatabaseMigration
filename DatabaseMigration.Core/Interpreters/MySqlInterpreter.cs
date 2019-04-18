@@ -1,10 +1,15 @@
 ﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using CsvHelper;
+using CsvHelper.Configuration;
+using CsvHelper.TypeConversion;
 
 namespace DatabaseMigration.Core
 {
@@ -16,8 +21,8 @@ namespace DatabaseMigration.Core
         public override char QuotationRightChar { get { return '`'; } }
         public override DatabaseType DatabaseType { get { return DatabaseType.MySql; } }
 
-        public readonly string DbCharset = "utf8";
-        public readonly string DbCharsetCollation = "utf8_bin";
+        public readonly string DbCharset = "utf8mb4";
+        public readonly string DbCharsetCollation = "utf8mb4_bin";
         #endregion
 
         #region Constructor
@@ -37,6 +42,228 @@ namespace DatabaseMigration.Core
                 yield return new MySqlParameter(kp.Key, kp.Value);
             }
         }
+
+        public override async Task<int> BulkCopyAsync(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            if (dataTable == null || dataTable.Rows.Count <= 0)
+            {
+                return 0;
+            }
+
+            var loader = GetMySqlBulkLoader(
+                connection,
+                dataTable,
+                destinationTableName,
+                bulkCopyTimeout);
+
+            if (loader == null)
+            {
+                return 0;
+            }
+
+            return await LoaderAsync(loader, dataTable);
+        }
+
+        public override int BulkCopy(
+            DbConnection connection,
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            if (dataTable == null || dataTable.Rows.Count <= 0)
+            {
+                return 0;
+            }
+
+            var loader = GetMySqlBulkLoader(
+                connection,
+                dataTable,
+                destinationTableName,
+                bulkCopyTimeout);
+
+            if (loader == null)
+            {
+                return 0;
+            }
+
+            return Loader(loader, dataTable);
+        }
+
+        private class NullDateTimeConverter : DateTimeConverter
+        {
+            public override string ConvertToString(object value, IWriterRow row, MemberMapData memberMapData)
+            {
+                if (value == null)
+                {
+                    return "NULL";
+                }
+
+                return base.ConvertToString(value, row, memberMapData);
+            }
+        }
+        private int Loader(MySqlBulkLoader loader, DataTable dataTable)
+        {
+            if (loader == null)
+            {
+                return 0;
+            }
+
+            var path = Path.GetTempFileName();
+
+            try
+            {
+                loader.FileName = path;
+
+
+                using (var writer = new StreamWriter(path))
+                {
+                    var configuration = new Configuration
+                    {
+                        HasHeaderRecord = false,
+                    };
+                    configuration.TypeConverterCache.AddConverter<DateTime?>(new NullDateTimeConverter());
+                    using (var csv = new CsvWriter(writer, configuration))
+                    {
+                        using (var dt = dataTable.Copy())
+                        {
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                var columnName = column.ColumnName;
+                                if (columnName != RowNumberColumnName)
+                                {
+                                    loader.Columns.Add(columnName);
+                                }
+                            }
+
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                for (var i = 0; i < dt.Columns.Count; i++)
+                                {
+                                    var column = dt.Columns[i];
+                                    var columnName = column.ColumnName;
+                                    if (columnName != RowNumberColumnName)
+                                    {
+                                        csv.WriteField(row[i]);
+                                    }
+                                }
+                                csv.NextRecord();
+                            }
+                        }
+                    }
+                }
+
+                return loader.Load();
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+        private async Task<int> LoaderAsync(MySqlBulkLoader loader, DataTable dataTable)
+        {
+            if (loader == null)
+            {
+                return 0;
+            }
+
+            var path = Path.GetTempFileName();
+
+            try
+            {
+                loader.FileName = path;
+
+
+                using (var writer = new StreamWriter(path))
+                {
+                    var configuration = new Configuration
+                    {
+                        HasHeaderRecord = false,
+                    };
+                    configuration.TypeConverterCache.AddConverter<DateTime?>(new NullDateTimeConverter());
+                    using (var csv = new CsvWriter(writer, configuration))
+                    {
+                        using (var dt = dataTable.Copy())
+                        {
+                            foreach (DataColumn column in dt.Columns)
+                            {
+                                var columnName = column.ColumnName;
+                                if (columnName != RowNumberColumnName)
+                                {
+                                    loader.Columns.Add(columnName);
+                                }
+                            }
+
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                for (var i = 0; i < dt.Columns.Count; i++)
+                                {
+                                    var column = dt.Columns[i];
+                                    var columnName = column.ColumnName;
+                                    if (columnName != RowNumberColumnName)
+                                    {
+                                        csv.WriteField(row[i]);
+                                    }
+                                }
+                                csv.NextRecord();
+                            }
+                        }
+                    }
+                }
+
+                return await loader.LoadAsync();
+            }
+            catch (Exception e)
+            {
+                throw e;
+            }
+            finally
+            {
+                File.Delete(path);
+            }
+        }
+        private MySqlBulkLoader GetMySqlBulkLoader(
+            DbConnection connection, 
+            DataTable dataTable,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null)
+        {
+            if (dataTable == null || dataTable.Rows.Count <= 0)
+            {
+                return null;
+            }
+
+            if (!(connection is MySqlConnection conn))
+            {
+                return null;
+            }
+
+            var loader = new MySqlBulkLoader(conn)
+            {
+                LineTerminator = Environment.NewLine,
+                FieldQuotationCharacter = '"',
+                EscapeCharacter = '"',
+                FieldTerminator = ",",
+                ConflictOption = MySqlBulkLoaderConflictOption.Ignore,
+                TableName = destinationTableName
+            };
+
+            if (bulkCopyTimeout.HasValue)
+            {
+                loader.Timeout = bulkCopyTimeout.Value;
+            }
+
+            return loader;
+        }
         #endregion
 
         #region Database
@@ -55,20 +282,24 @@ namespace DatabaseMigration.Core
         {
             return new List<UserDefinedType>();
         }
+
+        public override async Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames)
+        {
+            return await Task.Run(() => GetUserDefinedTypes(typeNames));
+        }
         #endregion
 
         #region Table
-        public override List<Table> GetTables(params string[] tableNames)
-        {
-            DbConnector dbConnector = this.GetDbConnector();
 
+        private string GetSqlForGetTables(params string[] tableNames)
+        {
             string sql = $@"SELECT TABLE_SCHEMA AS `Owner`, TABLE_NAME AS `Name`, TABLE_COMMENT AS `Comment`,
                         1 AS `IdentitySeed`, 1 AS `IdentityIncrement`
                         FROM INFORMATION_SCHEMA.`TABLES`
                         WHERE TABLE_SCHEMA ='{ConnectionInfo.Database}' 
                         ";
 
-            if (tableNames != null && tableNames.Count() > 0)
+            if (tableNames != null && tableNames.Any())
             {
                 string strTableNames = StringHelper.GetSingleQuotedString(tableNames);
                 sql += $" AND TABLE_NAME IN ({ strTableNames })";
@@ -76,7 +307,24 @@ namespace DatabaseMigration.Core
 
             sql += " ORDER BY TABLE_NAME";
 
+            return sql;
+        }
+        public override List<Table> GetTables(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
+
             return base.GetTables(dbConnector, sql);
+        }
+
+        public override async Task<List<Table>> GetTablesAsync(params string[] tableNames)
+        {
+            DbConnector dbConnector = this.GetDbConnector();
+
+            string sql = GetSqlForGetTables(tableNames);
+
+            return await base.GetTablesAsync(dbConnector, sql);
         }
         #endregion
 
@@ -152,17 +400,21 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
-            string sql = $@"SELECT  C.`CONSTRAINT_SCHEMA` AS `Owner`, K.TABLE_NAME AS TableName, K.CONSTRAINT_NAME AS IndexName, K.COLUMN_NAME AS ColumnName,
-                        CASE C.`CONSTRAINT_TYPE` WHEN 'UNIQUE' THEN 1 ELSE 0 END AS `IsUnique`, K.`ORDINAL_POSITION` AS `Order`,0 AS `IsDesc`
-                        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS C
-                        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K ON C.TABLE_NAME = K.TABLE_NAME AND C.CONSTRAINT_CATALOG = K.CONSTRAINT_CATALOG AND C.CONSTRAINT_SCHEMA = K.CONSTRAINT_SCHEMA AND C.CONSTRAINT_NAME = K.CONSTRAINT_NAME
-                        WHERE C.`CONSTRAINT_TYPE` NOT IN('PRIMARY KEY', 'FOREIGN KEY') 
-                        AND C.`CONSTRAINT_SCHEMA` ='{ConnectionInfo.Database}'";
+            string sql = $@"SELECT TABLE_SCHEMA AS `Owner`,
+	                        TABLE_NAME AS TableName,
+	                        INDEX_NAME AS IndexName,
+	                        COLUMN_NAME AS ColumnName,
+	                        NON_UNIQUE AS IsUnique,
+	                        SEQ_IN_INDEX  AS `Order`,
+	                        0 AS `IsDesc`
+	                        FROM INFORMATION_SCHEMA.STATISTICS 
+	                        WHERE INDEX_NAME NOT IN('PRIMARY', 'FOREIGN')
+	                        AND TABLE_SCHEMA = '{ConnectionInfo.Database}'";
 
-            if (tableNames != null && tableNames.Count() > 0)
+            if (tableNames != null && tableNames.Any())
             {
                 string strTableNames = StringHelper.GetSingleQuotedString(tableNames);
-                sql += $" AND C.TABLE_NAME IN ({ strTableNames })";
+                sql += $" AND TABLE_NAME IN ({ strTableNames })";
             }
 
             return base.GetTableIndexes(dbConnector, sql);
