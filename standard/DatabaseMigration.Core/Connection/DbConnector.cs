@@ -5,27 +5,34 @@ namespace DatabaseMigration.Core
 {
     public class DbConnector
     {
-        private readonly IDbProvider dbProvider;
-        private readonly string connectionString;
+        private readonly IDbProvider _dbProvider;
+        private readonly string _connectionString;
 
         public DbConnector(IDbProvider dbProvider, string connectionString)
         {
-            this.dbProvider = dbProvider;
-            this.connectionString = connectionString;
+            this._dbProvider = dbProvider;
+            this._connectionString = connectionString;
         }
 
         public DbConnector(IDbProvider dbProvider, IConnectionBuilder connectionBuilder, ConnectionInfo connectionInfo)
         {
-            this.dbProvider = dbProvider;
-            this.connectionString = connectionBuilder.BuildConntionString(connectionInfo);
+            this._dbProvider = dbProvider;
+            this._connectionString = connectionBuilder.BuildConntionString(connectionInfo);
         }
 
         public DbConnection CreateConnection()
         {
-            DbProviderFactory factory = DataUtils.GetDbProviderFactory(this.dbProvider.ProviderName);
+            DbProviderFactory factory = DataUtils.GetDbProviderFactory(this._dbProvider.ProviderName);
             DbConnection connection = factory.CreateConnection();
-            connection.ConnectionString = this.connectionString;
-            return connection;
+            if (connection != null)
+            {
+                connection.ConnectionString = this._connectionString;
+                return connection;
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }
