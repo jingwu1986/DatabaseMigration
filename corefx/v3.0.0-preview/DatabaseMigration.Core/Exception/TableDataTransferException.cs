@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DatabaseMigration.Core
 {
@@ -21,12 +17,6 @@ namespace DatabaseMigration.Core
         public string TargetDatabase { get; set; }
         public string TargetTableName { get; set; }
 
-        public override string Message
-        {
-            get
-            {
-                return BaseException.Message;
-            }
-        }
+        public override string Message => BaseException.Message;
     }
 }

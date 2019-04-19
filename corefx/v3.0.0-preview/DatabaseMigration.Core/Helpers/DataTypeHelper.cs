@@ -1,20 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 
 namespace DatabaseMigration.Core
 {
     public class DataTypeHelper
     {
         public static readonly string[] CharTypeFlags = { "char" };
-        public static readonly string[] TextTypeFlags = { "text"};
+        public static readonly string[] TextTypeFlags = { "text" };
         public static readonly string[] DatetimeTypeFlags = { "date", "time" };
 
         public static bool IsCharType(string dataType)
         {
-            return CharTypeFlags.Any(item=>dataType.ToLower().Contains(item));
+            return CharTypeFlags.Any(item => dataType.ToLower().Contains(item));
         }
 
         public static bool IsTextType(string dataType)
