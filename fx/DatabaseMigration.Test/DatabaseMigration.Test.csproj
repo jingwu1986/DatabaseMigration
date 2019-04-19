@@ -8,9 +8,10 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>DatabaseMigration.Test</RootNamespace>
     <AssemblyName>DatabaseMigration.Test</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -75,9 +76,6 @@
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="Oracle.ManagedDataAccess, Version=4.122.18.3, Culture=neutral, PublicKeyToken=89b483f429c47342, processorArchitecture=MSIL">
-      <HintPath>..\packages\Oracle.ManagedDataAccess.18.3.0\lib\net40\Oracle.ManagedDataAccess.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -101,9 +99,13 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\DatabaseMigration.Core\DatabaseMigration.Core.csproj">
-      <Project>{6d0f8b17-dd8a-49ee-8fa2-50e77d6bf879}</Project>
+    <ProjectReference Include="..\..\standard\DatabaseMigration.Core\DatabaseMigration.Core.csproj">
+      <Project>{2fd80f5d-8ebb-4a2b-a415-acc15450673e}</Project>
       <Name>DatabaseMigration.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\standard\DatabaseMigration.Models\DatabaseMigration.Models.csproj">
+      <Project>{ff739111-b9d9-48fb-b25b-92791d6b3ad1}</Project>
+      <Name>DatabaseMigration.Models</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
