@@ -1,0 +1,58 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Configs\DataTypeMapping\MySql2Oracle.xml" />
+    <None Remove="Configs\DataTypeMapping\MySql2SqlServer.xml" />
+    <None Remove="Configs\DataTypeMapping\Oracle2MySql.xml" />
+    <None Remove="Configs\DataTypeMapping\Oracle2SqlServer.xml" />
+    <None Remove="Configs\DataTypeMapping\SqlServer2MySql.xml" />
+    <None Remove="Configs\DataTypeMapping\SqlServer2Oracle.xml" />
+    <None Remove="Configs\FunctionMapping.xml" />
+    <None Remove="Configs\Setting.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Configs\DataTypeMapping\MySql2Oracle.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\DataTypeMapping\MySql2SqlServer.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\DataTypeMapping\Oracle2MySql.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\DataTypeMapping\Oracle2SqlServer.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\DataTypeMapping\SqlServer2MySql.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\DataTypeMapping\SqlServer2Oracle.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\FunctionMapping.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Configs\Setting.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="12.1.2" />
+    <PackageReference Include="Dapper" Version="1.60.6" />
+    <PackageReference Include="MySql.Data" Version="8.0.15" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="2.18.6" />
+    <PackageReference Include="Westwind.Utilities" Version="3.0.25" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DatabaseMigration.Profile\DatabaseMigration.Profile.csproj" />
+  </ItemGroup>
+
+</Project>

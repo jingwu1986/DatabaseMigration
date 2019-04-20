@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DatabaseMigration.Infrastructure\DatabaseMigration.Infrastructure.csproj" />
+    <ProjectReference Include="..\DatabaseMigration.Models\DatabaseMigration.Models.csproj" />
+  </ItemGroup>
+
+</Project>
