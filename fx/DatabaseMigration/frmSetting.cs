@@ -24,6 +24,8 @@ namespace DatabaseMigration
 
             this.numCommandTimeout.Value = setting.CommandTimeout;
             this.numDataBatchSize.Value = setting.DataBatchSize;
+            this.txtMySqlCharset.Text = setting.MySqlCharset;
+            this.txtMySqlCharsetCollation.Text = setting.MySqlCharsetCollation;
         }
 
         private void btnConfirm_Click(object sender, EventArgs e)
@@ -31,6 +33,8 @@ namespace DatabaseMigration
             Setting setting = SettingManager.Setting;
             setting.CommandTimeout = (int)this.numCommandTimeout.Value;
             setting.DataBatchSize = (int)this.numDataBatchSize.Value;
+            setting.MySqlCharset = this.txtMySqlCharset.Text.Trim();
+            setting.MySqlCharsetCollation = this.txtMySqlCharsetCollation.Text.Trim();
 
             SettingManager.SaveConfig(setting);
         }

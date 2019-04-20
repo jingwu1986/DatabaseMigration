@@ -74,13 +74,11 @@ namespace DatabaseMigration.Core
 
                         if (!hasSpecial && column.DataType.ToLower().StartsWith("n")) //nchar,nvarchar
                         {
-                            if (column.MaxLength > 0 && !sourceDataType.ToLower().StartsWith("n"))
+                            if (column.MaxLength > 0 && (!sourceDataType.ToLower().StartsWith("n") || targetDbType == DatabaseType.MySql)) //MySql doesn't have nvarchar
                             {
                                 column.MaxLength = column.MaxLength / 2;
                             }
-                        }
-
-
+                        }                                       
                     }
                     else
                     {

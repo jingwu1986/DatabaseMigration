@@ -21,8 +21,8 @@ namespace DatabaseMigration.Core
         public override char QuotationRightChar { get { return '`'; } }
         public override DatabaseType DatabaseType { get { return DatabaseType.MySql; } }
 
-        public readonly string DbCharset = "utf8mb4";
-        public readonly string DbCharsetCollation = "utf8mb4_bin";
+        public readonly string DbCharset = SettingManager.Setting.MySqlCharset;
+        public readonly string DbCharsetCollation = SettingManager.Setting.MySqlCharsetCollation;
         #endregion
 
         #region Constructor
@@ -120,7 +120,6 @@ namespace DatabaseMigration.Core
             {
                 loader.FileName = path;
 
-
                 using (var writer = new StreamWriter(path))
                 {
                     var configuration = new Configuration
@@ -162,7 +161,8 @@ namespace DatabaseMigration.Core
             }
             catch (Exception e)
             {
-                throw e;
+                this.FeedbackError("Write csv data error:" + e.Message);
+                return 0;
             }
             finally
             {

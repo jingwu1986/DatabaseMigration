@@ -30,7 +30,7 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            return 0;
+            throw new NotImplementedException();
         }
         public override int BulkCopy(
             DbConnection connection,
@@ -39,7 +39,7 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            return 0;
+            throw new NotImplementedException();
         }
 
         public override DbConnector GetDbConnector()
@@ -148,12 +148,13 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
+            //Note: MaxLength consider char/nvarchar, ie. it's nvarchar(50), the max length is 100.
             string sql = @"SELECT schema_name(T.schema_id) AS [Owner], 
                             T.name AS TableName,
                             C.name AS ColumnName, 
                             ST.name AS DataType,
                             C.is_nullable AS IsNullable,
-                            COLUMNPROPERTY(C.object_id,C.name,'PRECISION') AS MaxLength, 
+                            C.max_length AS MaxLength, 
                             C.precision AS Precision,
                             C.column_id as [Order], 
                             C.scale AS Scale,

@@ -69,6 +69,8 @@
             this.btnConfigSource = new System.Windows.Forms.Button();
             this.btnAddTarget = new System.Windows.Forms.Button();
             this.btnAddSource = new System.Windows.Forms.Button();
+            this.chkBulkCopy = new System.Windows.Forms.CheckBox();
+            this.chkAsync = new System.Windows.Forms.CheckBox();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.grpMessage.SuspendLayout();
@@ -176,7 +178,7 @@
             this.tvSource.CheckBoxes = true;
             this.tvSource.Location = new System.Drawing.Point(13, 79);
             this.tvSource.Name = "tvSource";
-            this.tvSource.Size = new System.Drawing.Size(262, 279);
+            this.tvSource.Size = new System.Drawing.Size(262, 311);
             this.tvSource.TabIndex = 9;
             this.tvSource.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tvSource_AfterCheck);
             // 
@@ -185,6 +187,8 @@
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox1.Controls.Add(this.chkAsync);
+            this.groupBox1.Controls.Add(this.chkBulkCopy);
             this.groupBox1.Controls.Add(this.chkGenerateIdentity);
             this.groupBox1.Controls.Add(this.chkPickup);
             this.groupBox1.Controls.Add(this.chkScriptData);
@@ -200,7 +204,7 @@
             this.groupBox1.Controls.Add(this.chkOutputScripts);
             this.groupBox1.Location = new System.Drawing.Point(290, 79);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(394, 279);
+            this.groupBox1.Size = new System.Drawing.Size(394, 311);
             this.groupBox1.TabIndex = 13;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Options";
@@ -290,7 +294,7 @@
             // lblOutputFolder
             // 
             this.lblOutputFolder.AutoSize = true;
-            this.lblOutputFolder.Location = new System.Drawing.Point(7, 233);
+            this.lblOutputFolder.Location = new System.Drawing.Point(7, 287);
             this.lblOutputFolder.Name = "lblOutputFolder";
             this.lblOutputFolder.Size = new System.Drawing.Size(89, 12);
             this.lblOutputFolder.TabIndex = 6;
@@ -298,7 +302,7 @@
             // 
             // btnOutputFolder
             // 
-            this.btnOutputFolder.Location = new System.Drawing.Point(286, 228);
+            this.btnOutputFolder.Location = new System.Drawing.Point(286, 282);
             this.btnOutputFolder.Name = "btnOutputFolder";
             this.btnOutputFolder.Size = new System.Drawing.Size(36, 23);
             this.btnOutputFolder.TabIndex = 4;
@@ -307,7 +311,7 @@
             // 
             // txtOutputFolder
             // 
-            this.txtOutputFolder.Location = new System.Drawing.Point(102, 230);
+            this.txtOutputFolder.Location = new System.Drawing.Point(102, 284);
             this.txtOutputFolder.Name = "txtOutputFolder";
             this.txtOutputFolder.Size = new System.Drawing.Size(178, 21);
             this.txtOutputFolder.TabIndex = 3;
@@ -335,7 +339,7 @@
             // 
             this.btnExecute.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnExecute.Enabled = false;
-            this.btnExecute.Location = new System.Drawing.Point(392, 364);
+            this.btnExecute.Location = new System.Drawing.Point(392, 396);
             this.btnExecute.Name = "btnExecute";
             this.btnExecute.Size = new System.Drawing.Size(75, 23);
             this.btnExecute.TabIndex = 14;
@@ -359,7 +363,7 @@
             // 
             this.btnSourceScript.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnSourceScript.Enabled = false;
-            this.btnSourceScript.Location = new System.Drawing.Point(14, 364);
+            this.btnSourceScript.Location = new System.Drawing.Point(14, 396);
             this.btnSourceScript.Name = "btnSourceScript";
             this.btnSourceScript.Size = new System.Drawing.Size(261, 23);
             this.btnSourceScript.TabIndex = 18;
@@ -371,7 +375,7 @@
             // 
             this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnCancel.Enabled = false;
-            this.btnCancel.Location = new System.Drawing.Point(489, 364);
+            this.btnCancel.Location = new System.Drawing.Point(489, 396);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 15;
@@ -386,7 +390,7 @@
             this.grpMessage.Controls.Add(this.btnSaveMessage);
             this.grpMessage.Controls.Add(this.btnCopyMessage);
             this.grpMessage.Controls.Add(this.txtMessage);
-            this.grpMessage.Location = new System.Drawing.Point(7, 393);
+            this.grpMessage.Location = new System.Drawing.Point(7, 425);
             this.grpMessage.Name = "grpMessage";
             this.grpMessage.Size = new System.Drawing.Size(677, 87);
             this.grpMessage.TabIndex = 20;
@@ -511,11 +515,31 @@
             this.btnAddSource.UseVisualStyleBackColor = true;
             this.btnAddSource.Click += new System.EventHandler(this.btnAddSource_Click);
             // 
+            // chkBulkCopy
+            // 
+            this.chkBulkCopy.AutoSize = true;
+            this.chkBulkCopy.Location = new System.Drawing.Point(9, 231);
+            this.chkBulkCopy.Name = "chkBulkCopy";
+            this.chkBulkCopy.Size = new System.Drawing.Size(186, 16);
+            this.chkBulkCopy.TabIndex = 15;
+            this.chkBulkCopy.Text = "Use BulkCopy to insert data";
+            this.chkBulkCopy.UseVisualStyleBackColor = true;
+            // 
+            // chkAsync
+            // 
+            this.chkAsync.AutoSize = true;
+            this.chkAsync.Location = new System.Drawing.Point(9, 260);
+            this.chkAsync.Name = "chkAsync";
+            this.chkAsync.Size = new System.Drawing.Size(180, 16);
+            this.chkAsync.TabIndex = 16;
+            this.chkAsync.Text = "Use async to transfer data";
+            this.chkAsync.UseVisualStyleBackColor = true;
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(696, 481);
+            this.ClientSize = new System.Drawing.Size(696, 513);
             this.Controls.Add(this.grpMessage);
             this.Controls.Add(this.btnRemoveTarget);
             this.Controls.Add(this.btnRemoveSource);
@@ -595,6 +619,8 @@
         private System.Windows.Forms.Button btnSaveMessage;
         private System.Windows.Forms.Button btnCopyMessage;
         private System.Windows.Forms.SaveFileDialog saveFileDialog1;
+        private System.Windows.Forms.CheckBox chkBulkCopy;
+        private System.Windows.Forms.CheckBox chkAsync;
     }
 }
 

@@ -8,5 +8,6 @@
         public bool SplitScriptsToExecute { get; set; }
         public char ScriptSplitChar { get; set; }
         public GenerateScriptMode GenerateScriptMode { get; set; } = GenerateScriptMode.Schema | GenerateScriptMode.Data;
+        public bool BulkCopy { get; set; }
     }
 }

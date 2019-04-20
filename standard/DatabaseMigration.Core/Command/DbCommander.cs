@@ -37,10 +37,16 @@ namespace DatabaseMigration.Core
             }
         }
 
-        public void ExecuteNonQuery()
+        public int ExecuteNonQuery()
         {
             this.OpenConnection();
-            dbCommand.ExecuteNonQuery();
+            return dbCommand.ExecuteNonQuery();
+        }
+
+        public Task<int> ExecuteNonQueryAsync()
+        {
+            this.OpenConnection();
+            return dbCommand.ExecuteNonQueryAsync();
         }
 
         public DbDataReader ExecteReader()

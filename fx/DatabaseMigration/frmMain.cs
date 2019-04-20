@@ -464,6 +464,7 @@ namespace DatabaseMigration
 
             DbConvertor dbConvertor = new DbConvertor(source, target, null);
             dbConvertor.Option.GenerateScriptMode = scriptMode;
+            dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
 
             dbConvertor.OnFeedback += Feedback;
 
@@ -502,7 +503,15 @@ namespace DatabaseMigration
             bool success = false;
             try
             {
-                await dbConvertor.ConvertAsync(schemaInfo, false);
+                if(this.chkAsync.Checked)
+                {
+                    await dbConvertor.ConvertAsync(schemaInfo, false);
+                }
+                else
+                {
+                    dbConvertor.Convert(schemaInfo, false);
+                }               
+
                 success = true;
 
                 if (dataErrorProfile != null)
@@ -513,11 +522,14 @@ namespace DatabaseMigration
             catch (Exception ex)
             {
                 string errMsg = ex.Message;
-
-                sbFeedback.AppendLine("Error:" + ex.Message);
+              
                 if (ex.InnerException != null)
                 {
-                    sbFeedback.AppendLine("Innser Exception:" + ex.InnerException.Message);
+                    sbFeedback.AppendLine("Inner Exception:" + ex.InnerException.Message);
+                }
+                else
+                {
+                    sbFeedback.AppendLine("Error:" + ex.Message);
                 }
 
                 if (!string.IsNullOrEmpty(ex.StackTrace))
@@ -525,7 +537,7 @@ namespace DatabaseMigration
                     sbFeedback.AppendLine(ex.StackTrace);
                 }
 
-                this.AppendErrorMessage(errMsg);
+                this.AppendErrorMessage(sbFeedback.ToString());
 
                 this.txtMessage.SelectionStart = this.txtMessage.TextLength;
                 this.txtMessage.ScrollToCaret();

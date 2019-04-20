@@ -107,14 +107,29 @@ namespace DatabaseMigration.Core
             var dt = new DataTable();
             dt.Load(reader);
             return dt;
-        }
+        }       
 
-        public void ExecuteNonQuery(string sql, Dictionary<string, object> paramaters = null)
+        public int ExecuteNonQuery(string sql, Dictionary<string, object> paramaters = null)
         {
-            this.ExecuteNonQuery(this.GetDbConnector().CreateConnection(), sql, paramaters);
+            return this.ExecuteNonQuery(this.GetDbConnector().CreateConnection(), sql, paramaters);
         }
 
-        public void ExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
+        public Task<int> ExecuteNonQueryAsync(string sql, Dictionary<string, object> paramaters = null)
+        {
+            return this.InteralExecuteNonQuery(this.GetDbConnector().CreateConnection(), sql, paramaters, true);
+        }
+
+        public int ExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
+        {
+            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, false).Result;
+        }
+
+        public Task<int> ExecuteNonQueryAsync(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
+        {
+            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, true);   
+        }
+
+        public async Task<int> InteralExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async=false)
         {
 #if disposeConnection
             using (dbConnection)
@@ -131,7 +146,9 @@ namespace DatabaseMigration.Core
                     }
                 }
 
-                dbCommander.ExecuteNonQuery();
+                int result= async? await dbCommander.ExecuteNonQueryAsync(): dbCommander.ExecuteNonQuery();
+
+                return result;
             }
         }
 
@@ -333,58 +350,15 @@ namespace DatabaseMigration.Core
 
         public virtual SchemaInfo GetSchemaInfo(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
         {
-            List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
-
-            List<Table> tables = new List<Table>();
-            List<TableColumn> columns = new List<TableColumn>();
-
-            if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
-            {
-                userDefinedTypes = this.GetUserDefinedTypes(userDefinedTypeNames);
-            }
-
-            List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
-            List<TableForeignKey> tableForeignKeys = new List<TableForeignKey>();
-            List<TableIndex> tableIndices = new List<TableIndex>();
-
-            if ((tableNames != null && tableNames.Length > 0) || getAllIfNotSpecified)
-            {
-                tables = this.GetTables(tableNames);
-                columns = this.GetTableColumns(tableNames);
-
-                if (Option.GenerateKey)
-                {
-                    tablePrimaryKeys = this.GetTablePrimaryKeys(tableNames);
-                    tableForeignKeys = this.GetTableForeignKeys(tableNames);
-                }
-
-                if (Option.GenerateIndex)
-                {
-                    tableIndices = this.GetTableIndexes(tableNames);
-                }
-            }
-
-            if (Option.SortTablesByKeyReference && Option.GenerateKey)
-            {
-                List<string> sortedTableNames = TableReferenceHelper.ResortTableNames(tableNames, tableForeignKeys);
-
-                int i = 1;
-                foreach (string tableName in sortedTableNames)
-                {
-                    Table table = tables.FirstOrDefault(item => item.Name == tableName);
-                    if (table != null)
-                    {
-                        table.Order = i++;
-                    }
-                }
-
-                tables = tables.OrderBy(item => item.Order).ToList();
-            }
-
-            return new SchemaInfo() { UserDefinedTypes = userDefinedTypes, Tables = tables, Columns = columns, TablePrimaryKeys = tablePrimaryKeys, TableForeignKeys = tableForeignKeys, TableIndices = tableIndices };
+            return this.InternalGetSchemalInfo(tableNames, userDefinedTypeNames, getAllIfNotSpecified, false).Result;
         }
 
-        public virtual async Task<SchemaInfo> GetSchemaInfoAsync(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
+        public virtual Task<SchemaInfo> GetSchemaInfoAsync(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
+        {
+            return this.InternalGetSchemalInfo(tableNames, userDefinedTypeNames, getAllIfNotSpecified, true);
+        }
+
+        private async Task<SchemaInfo> InternalGetSchemalInfo(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true, bool async=false)
         {
             List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
 
@@ -444,6 +418,7 @@ namespace DatabaseMigration.Core
                 TableIndices = tableIndices
             };
         }
+
         public abstract string GenerateSchemaScripts(SchemaInfo schemaInfo);
         public abstract string TranslateColumn(Table table, TableColumn column);
 
@@ -461,102 +436,14 @@ namespace DatabaseMigration.Core
 
         public virtual string GenerateDataScripts(SchemaInfo schemaInfo)
         {
-            StringBuilder sb = new StringBuilder();
-
-            if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
-            {
-                this.AppendScriptsToFile("", GenerateScriptMode.Data, true);
-            }
-
-            int i = 0;
-            int pickupIndex = -1;
-            if (schemaInfo.PickupTable != null)
-            {
-                foreach (Table table in schemaInfo.Tables)
-                {
-                    if (table.Owner == schemaInfo.PickupTable.Owner && table.Name == schemaInfo.PickupTable.Name)
-                    {
-                        pickupIndex = i;
-                        break;
-                    }
-                    i++;
-                }
-            }
-
-            i = 0;
-            using (DbConnection connection = this.GetDbConnector().CreateConnection())
-            {
-                int tableCount = schemaInfo.Tables.Count - (pickupIndex == -1 ? 0 : pickupIndex + 1);
-                int count = 0;
-                foreach (Table table in schemaInfo.Tables)
-                {
-                    if (i < pickupIndex)
-                    {
-                        i++;
-                        continue;
-                    }
-
-                    count++;
-                    string strTableCount = $"({count}/{tableCount})";
-                    string tableName = table.Name;
-                    List<TableColumn> columns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName).OrderBy(item => item.Order).ToList();
-
-                    bool isSelfReference = TableReferenceHelper.IsSelfReference(tableName, schemaInfo.TableForeignKeys);
-
-                    List<TablePrimaryKey> primaryKeys = schemaInfo.TablePrimaryKeys.Where(item => item.Owner == table.Owner && item.TableName == tableName).ToList();
-                    string primaryKeyColumns = string.Join(",", primaryKeys.OrderBy(item => item.Order).Select(item => GetQuotedString(item.ColumnName)));
-
-                    long total = this.GetTableRecordCount(connection, table);
-
-                    if (Option.DataGenerateThreshold.HasValue && total > Option.DataGenerateThreshold.Value)
-                    {
-                        continue;
-                    }
-
-                    int pageSize = Option.DataBatchSize;
-
-                    this.FeedbackInfo($"{strTableCount}Begin to read data from table {table.Name}, total rows:{total}.");
-
-                    Dictionary<long, List<Dictionary<string, object>>> dictPagedData;
-                    if (isSelfReference)
-                    {
-                        string parentColumnName = schemaInfo.TableForeignKeys.FirstOrDefault(item =>
-                            item.Owner == table.Owner
-                            && item.TableName == tableName
-                            && item.ReferencedTableName == tableName)?.ColumnName;
-
-                        string strWhere = $" WHERE {GetQuotedString(parentColumnName)} IS NULL";
-                        dictPagedData = this.GetSortedPageDatas(connection, table, primaryKeyColumns, parentColumnName, columns, Option, strWhere);
-                    }
-                    else
-                    {
-                        dictPagedData = this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize);
-                    }
-
-                    this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
-
-                    this.AppendDataScripts(Option, sb, table, columns, dictPagedData);
-
-                    i++;
-                }
-            }
-
-            var dataScripts = string.Empty;
-            try
-            {
-                dataScripts = sb.ToString();
-            }
-            catch (OutOfMemoryException ex)
-            {
-                //ignore
-            }
-            finally
-            {
-                sb.Clear();
-            }
-            return dataScripts;
+            return this.InternalGenerateDataScripts(schemaInfo, false).Result;
         }
-        public virtual async Task<string> GenerateDataScriptsAsync(SchemaInfo schemaInfo)
+        public virtual Task<string> GenerateDataScriptsAsync(SchemaInfo schemaInfo)
+        {
+            return this.InternalGenerateDataScripts(schemaInfo, true);
+        }
+
+        private async Task<string> InternalGenerateDataScripts(SchemaInfo schemaInfo, bool async=false)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -627,7 +514,8 @@ namespace DatabaseMigration.Core
                     }
                     else
                     {
-                        dictPagedData = await this.GetPagedDataListAsync(connection, table, columns, primaryKeyColumns, total, pageSize);
+                        dictPagedData = async ? await this.GetPagedDataListAsync(connection, table, columns, primaryKeyColumns, total, pageSize)
+                            : this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize); 
                     }
 
                     this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
@@ -645,7 +533,7 @@ namespace DatabaseMigration.Core
             }
             catch (OutOfMemoryException ex)
             {
-                //ignore
+                this.FeedbackError("Exception occurs:" + ex.Message);
             }
             finally
             {
@@ -695,83 +583,15 @@ namespace DatabaseMigration.Core
 
         private Dictionary<long, List<Dictionary<string, object>>> GetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
         {
-            string quotedTableName = this.GetQuotedTableName(table);
-            string columnNames = this.GetQuotedColumnNames(columns);
-
-            Dictionary<long, List<Dictionary<string, object>>> dictPagedData = new Dictionary<long, List<Dictionary<string, object>>>();
-
-            long pageCount = PaginationHelper.GetPageCount(total, pageSize);
-
-            for (long pageNumber = 1; pageNumber <= pageCount; pageNumber++)
-            {
-                string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
-
-                DataTable dataTable = this.GetDataTable(connection, pagedSql);
-
-                List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
-                foreach (DataRow row in dataTable.Rows)
-                {
-                    Dictionary<string, object> dicField = new Dictionary<string, object>();
-                    for (var i = 0; i < dataTable.Columns.Count; i++)
-                    {
-                        DataColumn column = dataTable.Columns[i];
-                        string columnName = column.ColumnName;
-                        if (columnName == RowNumberColumnName)
-                        {
-                            continue;
-                        }
-
-                        TableColumn tableColumn = columns.FirstOrDefault(item => item.ColumnName == columnName);
-
-                        object value = row[i];
-
-                        if (this.IsBytes(value) && this.Option.TreatBytesAsNullForData)
-                        {
-                            value = null;
-                        }
-
-                        object newValue = this.GetInsertValue(tableColumn, value);
-                        dicField.Add(columnName, newValue);
-                    }
-
-                    rows.Add(dicField);
-                }
-                /*while (dataReader.Read())
-                {
-                    Dictionary<string, object> dicField = new Dictionary<string, object>();
-                    for (int i = 0; i < dataReader.FieldCount; i++)
-                    {
-                        string columnName = dataReader.GetName(i);
-                        if (columnName != RowNumberColumnName)
-                        {
-                            TableColumn column = columns.FirstOrDefault(item => item.ColumnName == columnName);
-                            object value = dataReader[i];
-
-                            if (this.IsBytes(value) && this.Option.TreatBytesAsNullForData)
-                            {
-                                value = null;
-                            }
-
-                            object newValue = this.GetInsertValue(column, value);
-
-                            dicField.Add(columnName, newValue);
-                        }
-                    }
-                    rows.Add(dicField);
-                }*/
-
-                dictPagedData.Add(pageNumber, rows);
-
-                if (this.OnDataRead != null)
-                {
-                    this.FeedbackInfo($"Transfer data from table {table.Name}, rows:{rows.Count}.");
-                    this.OnDataRead(table, columns, rows, dataTable);
-                }
-            }
-
-            return dictPagedData;
+            return this.InteralGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, false).Result;
         }
-        private async Task<Dictionary<long, List<Dictionary<string, object>>>> GetPagedDataListAsync(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
+
+        private Task<Dictionary<long, List<Dictionary<string, object>>>> GetPagedDataListAsync(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
+        {
+            return this.InteralGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, true);
+        }
+
+        private async Task<Dictionary<long, List<Dictionary<string, object>>>> InteralGetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "", bool async = false)
         {
             string quotedTableName = this.GetQuotedTableName(table);
             string columnNames = this.GetQuotedColumnNames(columns);
@@ -784,7 +604,7 @@ namespace DatabaseMigration.Core
             {
                 string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
 
-                var dataTable = await this.GetDataTableAsync(connection, pagedSql);
+                var dataTable = async? await this.GetDataTableAsync(connection, pagedSql): this.GetDataTable(connection, pagedSql);
 
                 List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
                 foreach (DataRow row in dataTable.Rows)
@@ -826,6 +646,7 @@ namespace DatabaseMigration.Core
 
             return dictPagedData;
         }
+
 
         protected abstract string GetPagedSql(string tableName, string columnNames, string primaryKeyColumns, string whereClause, long pageNumber, int pageSize);
 

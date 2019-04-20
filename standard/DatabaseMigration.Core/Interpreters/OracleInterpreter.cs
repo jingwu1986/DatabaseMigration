@@ -28,7 +28,7 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            return 0;
+            throw new NotImplementedException();
         }
         public override int BulkCopy(
             DbConnection connection,
@@ -37,7 +37,7 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            return 0;
+            throw new NotImplementedException();
         }
 
 
