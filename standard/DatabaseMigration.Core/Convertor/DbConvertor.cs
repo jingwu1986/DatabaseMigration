@@ -208,7 +208,7 @@ namespace DatabaseMigration.Core
 
                             if (!this.Option.SplitScriptsToExecute)
                             {
-                                if (this.Option.BulkCopy)
+                                if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                 {
                                     if (async)
                                     {
@@ -239,14 +239,28 @@ namespace DatabaseMigration.Core
                                 {
                                     if (!string.IsNullOrEmpty(sql.Trim()))
                                     {
-                                        if(async)
+                                        if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                         {
-                                            await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                            if (async)
+                                            {
+                                                await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                            }
+                                            else
+                                            {
+                                                targetInterpreter.BulkCopy(dbConnection, dbDataReader, table.Name);
+                                            }
                                         }
                                         else
                                         {
-                                            targetInterpreter.ExecuteNonQuery(dbConnection, sql, paramters, false);
-                                        }                                        
+                                            if (async)
+                                            {
+                                                await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                            }
+                                            else
+                                            {
+                                                targetInterpreter.ExecuteNonQuery(dbConnection, sql, paramters, false);
+                                            }
+                                        }                                                                            
                                     }
                                 }
                             }

@@ -19,6 +19,7 @@ namespace DatabaseMigration.Core
         public abstract char QuotationLeftChar { get; }
         public abstract char QuotationRightChar { get; }
         public abstract DatabaseType DatabaseType { get; }
+        public abstract bool SupportBulkCopy { get; }
         public GenerateScriptOption Option { get; set; } = new GenerateScriptOption();
         public ConnectionInfo ConnectionInfo { get; set; }
 
@@ -210,23 +211,20 @@ namespace DatabaseMigration.Core
         public abstract Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames);
         protected List<UserDefinedType> GetUserDefinedTypes(DbConnector dbConnector, string sql)
         {
-            List<UserDefinedType> userDefinedTypes;
-            using (DbConnection dbConnection = dbConnector.CreateConnection())
-            {
-                userDefinedTypes = dbConnection.Query<UserDefinedType>(sql).ToList();
-            }
-
-            this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
-
-            return userDefinedTypes;
+            return InternalGetUserDefinedTypes(dbConnector,sql, false).Result;
         }
 
-        protected async Task<List<UserDefinedType>> GetUserDefinedTypesAsync(DbConnector dbConnector, string sql)
+        protected Task<List<UserDefinedType>> GetUserDefinedTypesAsync(DbConnector dbConnector, string sql)
+        {
+            return InternalGetUserDefinedTypes(dbConnector, sql, true);
+        }
+
+        private async Task<List<UserDefinedType>> InternalGetUserDefinedTypes(DbConnector dbConnector, string sql, bool async=false)
         {
             List<UserDefinedType> userDefinedTypes;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                userDefinedTypes = (await dbConnection.QueryAsync<UserDefinedType>(sql)).ToList();
+                userDefinedTypes = (async? (await dbConnection.QueryAsync<UserDefinedType>(sql)): dbConnection.Query<UserDefinedType>(sql)).ToList();
             }
 
             this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
@@ -240,32 +238,20 @@ namespace DatabaseMigration.Core
         public abstract Task<List<Table>> GetTablesAsync(params string[] tableNames);
         protected List<Table> GetTables(DbConnector dbConnector, string sql)
         {
-            List<Table> tables = new List<Table>();
-            using (DbConnection dbConnection = dbConnector.CreateConnection())
-            {
-                var list = dbConnection.Query<Table>(sql);
-                if (list != null && list.Any())
-                {
-                    int i = 1;
-                    foreach (var table in list)
-                    {
-                        table.Order = i++;
-                        tables.Add(table);
-                    }
-                }
-            }
-
-            this.FeedbackInfo($"Get {tables.Count} tables.");
-
-            return tables;
+            return this.InteralGetTables(dbConnector, sql, false).Result;
         }
 
-        protected async Task<List<Table>> GetTablesAsync(DbConnector dbConnector, string sql)
+        protected Task<List<Table>> GetTablesAsync(DbConnector dbConnector, string sql)
+        {
+            return this.InteralGetTables(dbConnector,sql,true);
+        }
+
+        private async Task<List<Table>> InteralGetTables(DbConnector dbConnector, string sql, bool async=false)
         {
             List<Table> tables = new List<Table>();
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                var list = await dbConnection.QueryAsync<Table>(sql);
+                var list = async ? (await dbConnection.QueryAsync<Table>(sql)) : dbConnection.Query<Table>(sql);
                 if (list != null && list.Any())
                 {
                     int i = 1;
@@ -367,7 +353,7 @@ namespace DatabaseMigration.Core
 
             if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
             {
-                userDefinedTypes = await this.GetUserDefinedTypesAsync(userDefinedTypeNames);
+                userDefinedTypes = async? await this.GetUserDefinedTypesAsync(userDefinedTypeNames): this.GetUserDefinedTypes(userDefinedTypeNames);
             }
 
             List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
@@ -376,7 +362,7 @@ namespace DatabaseMigration.Core
 
             if ((tableNames != null && tableNames.Length > 0) || getAllIfNotSpecified)
             {
-                tables = await this.GetTablesAsync(tableNames);
+                tables = async? await this.GetTablesAsync(tableNames): this.GetTables(tableNames);
                 columns = this.GetTableColumns(tableNames);
 
                 if (Option.GenerateKey)
@@ -690,7 +676,7 @@ namespace DatabaseMigration.Core
                 {
                     rowCount++;
 
-                    string values = this.GetInsertValues(columns, excludeColumnNames, rowCount - 1, row, out var insertParameters, out var valuesWithoutParameter);
+                    string values = this.GetInsertValues(columns, excludeColumnNames, kp.Key, rowCount - 1, row, out var insertParameters, out var valuesWithoutParameter);
 
                     if (insertParameters != null)
                     {
@@ -771,7 +757,7 @@ namespace DatabaseMigration.Core
             }
         }
 
-        private string GetInsertValues(List<TableColumn> columns, List<string> excludeColumnNames, int rowIndex, Dictionary<string, object> row, out Dictionary<string, object> parameters, out string valuesWithoutParameter)
+        private string GetInsertValues(List<TableColumn> columns, List<string> excludeColumnNames, long pageNumber, int rowIndex, Dictionary<string, object> row, out Dictionary<string, object> parameters, out string valuesWithoutParameter)
         {
             valuesWithoutParameter = "";
             parameters = new Dictionary<string, object>();
@@ -786,7 +772,7 @@ namespace DatabaseMigration.Core
 
                     if (!this.Option.TreatBytesAsNullForScript && (this.BytesAsParameter(value) || this.NeedInsertParameter(value)))
                     {
-                        string parameterName = $"P{rowIndex}_{column.ColumnName}";
+                        string parameterName = $"P{pageNumber}_{rowIndex}_{column.ColumnName}";
                         parameters.Add(this.CommandParameterChar + parameterName, value);
 
                         string parameterPlaceholder = this.CommandParameterChar + parameterName;

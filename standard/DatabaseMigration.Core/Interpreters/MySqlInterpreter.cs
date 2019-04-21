@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
+using Dapper;
 
 namespace DatabaseMigration.Core
 {
@@ -20,9 +21,11 @@ namespace DatabaseMigration.Core
         public override char QuotationLeftChar { get { return '`'; } }
         public override char QuotationRightChar { get { return '`'; } }
         public override DatabaseType DatabaseType { get { return DatabaseType.MySql; } }
+        public override bool SupportBulkCopy { get { return true; } }
 
         public readonly string DbCharset = SettingManager.Setting.MySqlCharset;
         public readonly string DbCharsetCollation = SettingManager.Setting.MySqlCharsetCollation;
+        private string loaderPath = "";
         #endregion
 
         #region Constructor
@@ -109,80 +112,31 @@ namespace DatabaseMigration.Core
         }
         private int Loader(MySqlBulkLoader loader, DataTable dataTable)
         {
-            if (loader == null)
-            {
-                return 0;
-            }
-
-            var path = Path.GetTempFileName();
-
-            try
-            {
-                loader.FileName = path;
-
-                using (var writer = new StreamWriter(path))
-                {
-                    var configuration = new Configuration
-                    {
-                        HasHeaderRecord = false,
-                    };
-                    configuration.TypeConverterCache.AddConverter<DateTime?>(new NullDateTimeConverter());
-                    using (var csv = new CsvWriter(writer, configuration))
-                    {
-                        using (var dt = dataTable.Copy())
-                        {
-                            foreach (DataColumn column in dt.Columns)
-                            {
-                                var columnName = column.ColumnName;
-                                if (columnName != RowNumberColumnName)
-                                {
-                                    loader.Columns.Add(columnName);
-                                }
-                            }
-
-                            foreach (DataRow row in dt.Rows)
-                            {
-                                for (var i = 0; i < dt.Columns.Count; i++)
-                                {
-                                    var column = dt.Columns[i];
-                                    var columnName = column.ColumnName;
-                                    if (columnName != RowNumberColumnName)
-                                    {
-                                        csv.WriteField(row[i]);
-                                    }
-                                }
-                                csv.NextRecord();
-                            }
-                        }
-                    }
-                }
-
-                return loader.Load();
-            }
-            catch (Exception e)
-            {
-                this.FeedbackError("Write csv data error:" + e.Message);
-                return 0;
-            }
-            finally
-            {
-                File.Delete(path);
-            }
+            return this.InternalLoader(loader, dataTable, false).Result;
         }
-        private async Task<int> LoaderAsync(MySqlBulkLoader loader, DataTable dataTable)
+
+        private Task<int> LoaderAsync(MySqlBulkLoader loader, DataTable dataTable)
+        {
+            return this.InternalLoader(loader, dataTable, true);
+        }
+
+        private async Task<int> InternalLoader(MySqlBulkLoader loader, DataTable dataTable, bool async=false)
         {
             if (loader == null)
             {
                 return 0;
             }
 
-            var path = Path.GetTempFileName();
+            string path = loader.FileName;
+
+            if (string.IsNullOrEmpty(path))
+            {
+                path = Path.GetTempFileName();
+                loader.FileName = path;
+            }
 
             try
             {
-                loader.FileName = path;
-
-
                 using (var writer = new StreamWriter(path))
                 {
                     var configuration = new Configuration
@@ -220,7 +174,7 @@ namespace DatabaseMigration.Core
                     }
                 }
 
-                return await loader.LoadAsync();
+                return async? await loader.LoadAsync(): loader.Load();
             }
             catch (Exception e)
             {
@@ -231,8 +185,9 @@ namespace DatabaseMigration.Core
                 File.Delete(path);
             }
         }
+
         private MySqlBulkLoader GetMySqlBulkLoader(
-            DbConnection connection, 
+            DbConnection connection,
             DataTable dataTable,
             string destinationTableName = null,
             int? bulkCopyTimeout = null)
@@ -254,8 +209,15 @@ namespace DatabaseMigration.Core
                 EscapeCharacter = '"',
                 FieldTerminator = ",",
                 ConflictOption = MySqlBulkLoaderConflictOption.Ignore,
-                TableName = destinationTableName
+                TableName = this.GetQuotedString(destinationTableName)               
             };
+
+            if(string.IsNullOrEmpty(this.loaderPath))
+            {
+                this.loaderPath = conn.Query<string>(@"select @@global.secure_file_priv;").FirstOrDefault() ?? "";
+            }           
+
+            loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
 
             if (bulkCopyTimeout.HasValue)
             {
@@ -334,7 +296,7 @@ namespace DatabaseMigration.Core
             DbConnector dbConnector = this.GetDbConnector();
 
             string sql = $@"SELECT TABLE_SCHEMA AS `Owner`, TABLE_NAME AS TableName, COLUMN_NAME AS ColumnName, COLUMN_TYPE AS DataType, 
-                        CHARACTER_MAXIMUM_LENGTH AS MaxLength, IS_NULLABLE AS IsNullable,ORDINAL_POSITION AS `Order`,
+                        CHARACTER_MAXIMUM_LENGTH AS MaxLength, CASE IS_NULLABLE WHEN 'YES' THEN 1 ELSE 0 END AS IsNullable,ORDINAL_POSITION AS `Order`,
                         NUMERIC_PRECISION AS `Precision`,NUMERIC_SCALE AS `Scale`, COLUMN_DEFAULT AS `DefaultValue`,COLUMN_COMMENT AS `Comment`,
                         CASE EXTRA WHEN 'auto_increment' THEN 1 ELSE 0 END AS `IsIdentity`,'' AS `TypeOwner`
                         FROM INFORMATION_SCHEMA.`COLUMNS`
@@ -404,7 +366,7 @@ namespace DatabaseMigration.Core
 	                        TABLE_NAME AS TableName,
 	                        INDEX_NAME AS IndexName,
 	                        COLUMN_NAME AS ColumnName,
-	                        NON_UNIQUE AS IsUnique,
+	                        CASE  NON_UNIQUE WHEN 1 THEN 0 ELSE 1 END AS IsUnique,
 	                        SEQ_IN_INDEX  AS `Order`,
 	                        0 AS `IsDesc`
 	                        FROM INFORMATION_SCHEMA.STATISTICS 

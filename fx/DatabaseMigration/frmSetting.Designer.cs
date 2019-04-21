@@ -36,16 +36,16 @@
             this.numDataBatchSize = new System.Windows.Forms.NumericUpDown();
             this.label2 = new System.Windows.Forms.Label();
             this.tabControl1 = new System.Windows.Forms.TabControl();
-            this.tabCommon = new System.Windows.Forms.TabPage();
+            this.tabGeneral = new System.Windows.Forms.TabPage();
             this.tabMySql = new System.Windows.Forms.TabPage();
-            this.lblMySqlCharset = new System.Windows.Forms.Label();
-            this.txtMySqlCharset = new System.Windows.Forms.TextBox();
             this.txtMySqlCharsetCollation = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.txtMySqlCharset = new System.Windows.Forms.TextBox();
+            this.lblMySqlCharset = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numCommandTimeout)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDataBatchSize)).BeginInit();
             this.tabControl1.SuspendLayout();
-            this.tabCommon.SuspendLayout();
+            this.tabGeneral.SuspendLayout();
             this.tabMySql.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -148,7 +148,7 @@
             this.tabControl1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.tabControl1.Controls.Add(this.tabCommon);
+            this.tabControl1.Controls.Add(this.tabGeneral);
             this.tabControl1.Controls.Add(this.tabMySql);
             this.tabControl1.Location = new System.Drawing.Point(1, 2);
             this.tabControl1.Name = "tabControl1";
@@ -156,20 +156,20 @@
             this.tabControl1.Size = new System.Drawing.Size(429, 254);
             this.tabControl1.TabIndex = 15;
             // 
-            // tabCommon
+            // tabGeneral
             // 
-            this.tabCommon.BackColor = System.Drawing.SystemColors.Control;
-            this.tabCommon.Controls.Add(this.label2);
-            this.tabCommon.Controls.Add(this.numDataBatchSize);
-            this.tabCommon.Controls.Add(this.lblCommandTimeout);
-            this.tabCommon.Controls.Add(this.numCommandTimeout);
-            this.tabCommon.Controls.Add(this.label1);
-            this.tabCommon.Location = new System.Drawing.Point(4, 22);
-            this.tabCommon.Name = "tabCommon";
-            this.tabCommon.Padding = new System.Windows.Forms.Padding(3);
-            this.tabCommon.Size = new System.Drawing.Size(421, 228);
-            this.tabCommon.TabIndex = 0;
-            this.tabCommon.Text = "Common";
+            this.tabGeneral.BackColor = System.Drawing.SystemColors.Control;
+            this.tabGeneral.Controls.Add(this.label2);
+            this.tabGeneral.Controls.Add(this.numDataBatchSize);
+            this.tabGeneral.Controls.Add(this.lblCommandTimeout);
+            this.tabGeneral.Controls.Add(this.numCommandTimeout);
+            this.tabGeneral.Controls.Add(this.label1);
+            this.tabGeneral.Location = new System.Drawing.Point(4, 22);
+            this.tabGeneral.Name = "tabGeneral";
+            this.tabGeneral.Padding = new System.Windows.Forms.Padding(3);
+            this.tabGeneral.Size = new System.Drawing.Size(421, 228);
+            this.tabGeneral.TabIndex = 0;
+            this.tabGeneral.Text = "General";
             // 
             // tabMySql
             // 
@@ -184,22 +184,6 @@
             this.tabMySql.Size = new System.Drawing.Size(421, 228);
             this.tabMySql.TabIndex = 1;
             this.tabMySql.Text = "MySql";
-            // 
-            // lblMySqlCharset
-            // 
-            this.lblMySqlCharset.AutoSize = true;
-            this.lblMySqlCharset.Location = new System.Drawing.Point(22, 19);
-            this.lblMySqlCharset.Name = "lblMySqlCharset";
-            this.lblMySqlCharset.Size = new System.Drawing.Size(53, 12);
-            this.lblMySqlCharset.TabIndex = 0;
-            this.lblMySqlCharset.Text = "Charset:";
-            // 
-            // txtMySqlCharset
-            // 
-            this.txtMySqlCharset.Location = new System.Drawing.Point(141, 19);
-            this.txtMySqlCharset.Name = "txtMySqlCharset";
-            this.txtMySqlCharset.Size = new System.Drawing.Size(100, 21);
-            this.txtMySqlCharset.TabIndex = 1;
             // 
             // txtMySqlCharsetCollation
             // 
@@ -217,6 +201,22 @@
             this.label3.TabIndex = 2;
             this.label3.Text = "Charset Collation:";
             // 
+            // txtMySqlCharset
+            // 
+            this.txtMySqlCharset.Location = new System.Drawing.Point(141, 19);
+            this.txtMySqlCharset.Name = "txtMySqlCharset";
+            this.txtMySqlCharset.Size = new System.Drawing.Size(100, 21);
+            this.txtMySqlCharset.TabIndex = 1;
+            // 
+            // lblMySqlCharset
+            // 
+            this.lblMySqlCharset.AutoSize = true;
+            this.lblMySqlCharset.Location = new System.Drawing.Point(22, 19);
+            this.lblMySqlCharset.Name = "lblMySqlCharset";
+            this.lblMySqlCharset.Size = new System.Drawing.Size(53, 12);
+            this.lblMySqlCharset.TabIndex = 0;
+            this.lblMySqlCharset.Text = "Charset:";
+            // 
             // frmSetting
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -233,8 +233,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.numCommandTimeout)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDataBatchSize)).EndInit();
             this.tabControl1.ResumeLayout(false);
-            this.tabCommon.ResumeLayout(false);
-            this.tabCommon.PerformLayout();
+            this.tabGeneral.ResumeLayout(false);
+            this.tabGeneral.PerformLayout();
             this.tabMySql.ResumeLayout(false);
             this.tabMySql.PerformLayout();
             this.ResumeLayout(false);
@@ -251,7 +251,7 @@
         private System.Windows.Forms.NumericUpDown numDataBatchSize;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.TabControl tabControl1;
-        private System.Windows.Forms.TabPage tabCommon;
+        private System.Windows.Forms.TabPage tabGeneral;
         private System.Windows.Forms.TabPage tabMySql;
         private System.Windows.Forms.TextBox txtMySqlCharset;
         private System.Windows.Forms.Label lblMySqlCharset;

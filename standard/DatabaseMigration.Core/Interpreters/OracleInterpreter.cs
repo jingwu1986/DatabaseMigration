@@ -18,6 +18,7 @@ namespace DatabaseMigration.Core
         public override char QuotationLeftChar { get { return '"'; } }
         public override char QuotationRightChar { get { return '"'; } }
         public override DatabaseType DatabaseType { get { return DatabaseType.Oracle; } }
+        public override bool SupportBulkCopy { get { return false; } }
         #endregion
 
         #region Common Method
@@ -124,7 +125,7 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
-            string sql = $@"SELECT OWNER AS ""Owner"", C.TABLE_NAME AS ""TableName"",C.COLUMN_NAME AS ""ColumnName"",DATA_TYPE AS ""DataType"",NULLABLE AS ""IsNullable"", DATA_LENGTH AS ""MaxLength"",
+            string sql = $@"SELECT OWNER AS ""Owner"", C.TABLE_NAME AS ""TableName"",C.COLUMN_NAME AS ""ColumnName"",DATA_TYPE AS ""DataType"",CASE NULLABLE WHEN 'Y' THEN 1 ELSE 0 END AS ""IsNullable"", DATA_LENGTH AS ""MaxLength"",
                  DATA_PRECISION AS ""Precision"",DATA_SCALE AS ""Scale"", COLUMN_ID AS ""Order"", DATA_DEFAULT AS ""DefaultValue"", 0 AS ""IsIdentity"", CC.COMMENTS AS ""Comment"" , '' AS ""TypeOwner""
                  FROM ALL_TAB_COLUMNS C
                  LEFT JOIN USER_COL_COMMENTS CC ON C.TABLE_NAME=CC.TABLE_NAME AND C.COLUMN_NAME=CC.COLUMN_NAME

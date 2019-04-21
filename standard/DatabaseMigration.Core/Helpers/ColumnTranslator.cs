@@ -118,7 +118,7 @@ namespace DatabaseMigration.Core
 
                 if (!string.IsNullOrEmpty(column.DefaultValue))
                 {
-                    string defaultValue = sourceDbType == DatabaseType.SqlServer ? GetTrimedDefaultValue(column.DefaultValue) : GetQuotedDefaultValue(column.DefaultValue);
+                    string defaultValue = GetTrimedDefaultValue(column.DefaultValue);
                     IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function == defaultValue));
                     if (funcMappings != null)
                     {

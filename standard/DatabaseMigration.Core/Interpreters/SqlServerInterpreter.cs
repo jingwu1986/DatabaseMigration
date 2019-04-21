@@ -15,7 +15,8 @@ namespace DatabaseMigration.Core
         public override string CommandParameterChar { get { return "@"; } }
         public override char QuotationLeftChar { get { return '['; } }
         public override char QuotationRightChar { get { return ']'; } }
-        public override DatabaseType DatabaseType { get { return DatabaseType.SqlServer;  } }
+        public override DatabaseType DatabaseType { get { return DatabaseType.SqlServer; } }
+        public override bool SupportBulkCopy { get { return true; } }
         #endregion
 
         #region Constructor
@@ -30,8 +31,15 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            throw new NotImplementedException();
+            SqlBulkCopy bulkCopy = this.GetBulkCopy(connection, destinationTableName, bulkCopyTimeout, batchSize);
+            {
+                await bulkCopy.WriteToServerAsync(dataTable);
+            }
+
+            return 0;
         }
+
+
         public override int BulkCopy(
             DbConnection connection,
             DataTable dataTable,
@@ -39,7 +47,31 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null)
         {
-            throw new NotImplementedException();
+            SqlBulkCopy bulkCopy = this.GetBulkCopy(connection, destinationTableName, bulkCopyTimeout, batchSize);
+            {
+                bulkCopy.WriteToServer(dataTable);
+            }
+
+            return 0;
+        }
+
+        private SqlBulkCopy GetBulkCopy(DbConnection connection,
+            string destinationTableName = null,
+            int? bulkCopyTimeout = null,
+            int? batchSize = null)
+        {
+            SqlBulkCopy bulkCopy = new SqlBulkCopy(connection as SqlConnection);
+
+            if (connection.State == ConnectionState.Closed)
+            {
+                connection.Open();
+            }
+
+            bulkCopy.DestinationTableName = this.GetQuotedString(destinationTableName);
+            bulkCopy.BulkCopyTimeout = bulkCopyTimeout.HasValue ? bulkCopyTimeout.Value : SettingManager.Setting.CommandTimeout;
+            bulkCopy.BatchSize = batchSize.HasValue ? batchSize.Value : SettingManager.Setting.DataBatchSize;
+
+            return bulkCopy;
         }
 
         public override DbConnector GetDbConnector()
@@ -61,12 +93,12 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
-            string sql = $@"SELECT name AS Name FROM sys.databases WHERE owner_sid != 0x01 ORDER BY database_id";  
+            string sql = $@"SELECT name AS Name FROM sys.databases WHERE owner_sid != 0x01 ORDER BY database_id";
 
             return base.GetDatabases(dbConnector, sql);
         }
-        #endregion 
-        
+        #endregion
+
         #region User Defined Type
 
         private string GetSqlForGetUserDefinedTypes(params string[] typeNames)
@@ -252,7 +284,7 @@ namespace DatabaseMigration.Core
         #region Identity
         public override void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled)
         {
-            this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedTableName(new Table() { Name=column.TableName, Owner=column.Owner })} {(enabled? "OFF": "ON")}");
+            this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedTableName(new Table() { Name = column.TableName, Owner = column.Owner })} {(enabled ? "OFF" : "ON")}");
         }
         #endregion       
 
@@ -267,16 +299,16 @@ namespace DatabaseMigration.Core
             {
                 this.FeedbackInfo($"Begin generate user defined type {userDefinedType.Name} script.");
 
-                TableColumn column = new TableColumn() { DataType=userDefinedType.Type, MaxLength=userDefinedType.MaxLength, Precision=userDefinedType.Precision, Scale=userDefinedType.Scale };
+                TableColumn column = new TableColumn() { DataType = userDefinedType.Type, MaxLength = userDefinedType.MaxLength, Precision = userDefinedType.Precision, Scale = userDefinedType.Scale };
                 string dataLength = this.GetColumnDataLength(column);
 
-                sb.AppendLine($@"CREATE TYPE {GetQuotedString(userDefinedType.Owner)}.{GetQuotedString(userDefinedType.Name)} FROM {GetQuotedString(userDefinedType.Type)}{(dataLength==""? "": "("+dataLength+")")} {(userDefinedType.IsRequired? "NOT NULL":"NULL")};");
+                sb.AppendLine($@"CREATE TYPE {GetQuotedString(userDefinedType.Owner)}.{GetQuotedString(userDefinedType.Name)} FROM {GetQuotedString(userDefinedType.Type)}{(dataLength == "" ? "" : "(" + dataLength + ")")} {(userDefinedType.IsRequired ? "NOT NULL" : "NULL")};");
 
                 this.FeedbackInfo($"End generate user defined type {userDefinedType.Name} script.");
             }
 
             sb.AppendLine("GO");
-          
+
             #endregion
 
             foreach (Table table in schemaInfo.Tables)
@@ -285,13 +317,13 @@ namespace DatabaseMigration.Core
 
                 string tableName = table.Name;
                 string quotedTableName = this.GetQuotedTableName(table);
-                IEnumerable<TableColumn> tableColumns = schemaInfo.Columns.Where(item => item.Owner==table.Owner && item.TableName == tableName).OrderBy(item => item.Order);
+                IEnumerable<TableColumn> tableColumns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName).OrderBy(item => item.Order);
 
                 bool hasBigDataType = tableColumns.Any(item => this.IsBigDataType(item));
 
                 string primaryKey = "";
 
-                IEnumerable<TablePrimaryKey> primaryKeys = schemaInfo.TablePrimaryKeys.Where(item => item.Owner==table.Owner && item.TableName == tableName);
+                IEnumerable<TablePrimaryKey> primaryKeys = schemaInfo.TablePrimaryKeys.Where(item => item.Owner == table.Owner && item.TableName == tableName);
 
                 #region Primary Key
                 if (Option.GenerateKey && primaryKeys.Count() > 0)
@@ -314,7 +346,7 @@ SET ANSI_NULLS ON
 SET QUOTED_IDENTIFIER ON
 
 CREATE TABLE {quotedTableName}(
-{string.Join("," + Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item) ))}{primaryKey}
+{string.Join("," + Environment.NewLine, tableColumns.Select(item => this.TranslateColumn(table, item)))}{primaryKey}
 ) ON [PRIMARY]{(hasBigDataType ? " TEXTIMAGE_ON [PRIMARY]" : "")}");
                 #endregion
 
@@ -324,9 +356,9 @@ CREATE TABLE {quotedTableName}(
                 if (!string.IsNullOrEmpty(table.Comment))
                 {
                     sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(table.Comment)}',N'SCHEMA',N'{table.Owner}',N'table',N'{tableName}',NULL,NULL;");
-                } 
-                
-                foreach(TableColumn column in tableColumns.Where(item=>!string.IsNullOrEmpty(item.Comment)))
+                }
+
+                foreach (TableColumn column in tableColumns.Where(item => !string.IsNullOrEmpty(item.Comment)))
                 {
                     sb.AppendLine($"EXECUTE sp_addextendedproperty N'MS_Description',N'{ValueHelper.TransferSingleQuotation(column.Comment)}',N'SCHEMA',N'{table.Owner}',N'table',N'{tableName}',N'column',N'{column.ColumnName}';");
                 }
@@ -334,8 +366,8 @@ CREATE TABLE {quotedTableName}(
 
                 #region Foreign Key
                 if (Option.GenerateKey)
-                {                   
-                    IEnumerable<TableForeignKey> foreignKeys = schemaInfo.TableForeignKeys.Where(item => item.Owner==table.Owner && item.TableName == tableName);
+                {
+                    IEnumerable<TableForeignKey> foreignKeys = schemaInfo.TableForeignKeys.Where(item => item.Owner == table.Owner && item.TableName == tableName);
                     if (foreignKeys.Count() > 0)
                     {
                         ILookup<string, TableForeignKey> foreignKeyLookup = foreignKeys.ToLookup(item => item.KeyName);
@@ -345,7 +377,7 @@ CREATE TABLE {quotedTableName}(
                         foreach (string keyName in keyNames)
                         {
                             TableForeignKey tableForeignKey = foreignKeyLookup[keyName].First();
-                           
+
                             string columnNames = string.Join(",", foreignKeyLookup[keyName].Select(item => $"[{item.ColumnName}]"));
                             string referenceColumnName = string.Join(",", foreignKeyLookup[keyName].Select(item => $"[{item.ReferencedColumnName}]"));
 
@@ -374,7 +406,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 #region Index
                 if (Option.GenerateIndex)
                 {
-                    IEnumerable<TableIndex> indices = schemaInfo.TableIndices.Where(item => item.Owner==table.Owner && item.TableName == tableName).OrderBy(item => item.Order);
+                    IEnumerable<TableIndex> indices = schemaInfo.TableIndices.Where(item => item.Owner == table.Owner && item.TableName == tableName).OrderBy(item => item.Order);
                     if (indices.Count() > 0)
                     {
                         sb.AppendLine();
@@ -404,7 +436,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 #region Default Value
                 if (Option.GenerateDefaultValue)
                 {
-                    IEnumerable<TableColumn> defaultValueColumns = schemaInfo.Columns.Where(item => item.Owner== table.Owner && item.TableName == tableName && !string.IsNullOrEmpty(item.DefaultValue));
+                    IEnumerable<TableColumn> defaultValueColumns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName && !string.IsNullOrEmpty(item.DefaultValue));
                     foreach (TableColumn column in defaultValueColumns)
                     {
                         sb.AppendLine($"ALTER TABLE {quotedTableName} ADD CONSTRAINT {GetQuotedString($" DF_{tableName}_{column.ColumnName}")}  DEFAULT {column.DefaultValue} FOR [{column.ColumnName}];");
@@ -415,30 +447,30 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 this.FeedbackInfo($"End generate table {table.Name} script.");
             }
 
-            if(Option.ScriptOutputMode==GenerateScriptOutputMode.WriteToFile)
+            if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
             {
                 this.AppendScriptsToFile(sb.ToString(), GenerateScriptMode.Schema, true);
-            }           
+            }
 
             return sb.ToString();
         }
 
         public override string TranslateColumn(Table table, TableColumn column)
         {
-            if(column.IsUserDefined)
+            if (column.IsUserDefined)
             {
-                
+
                 return $@"{GetQuotedString(column.ColumnName)} {GetQuotedString(column.TypeOwner)}.{GetQuotedString(column.DataType)} {(column.IsRequired ? "NOT NULL" : "NULL")}";
             }
 
-            string dataLength = this.GetColumnDataLength(column);            
+            string dataLength = this.GetColumnDataLength(column);
 
             if (!string.IsNullOrEmpty(dataLength))
             {
                 dataLength = $"({dataLength})";
-            }         
+            }
 
-            return $@"{GetQuotedString(column.ColumnName)} {GetQuotedString(column.DataType)} {dataLength} {(this.Option.GenerateIdentity && column.IsIdentity? $"IDENTITY({table.IdentitySeed},{table.IdentityIncrement})":"")} {(column.IsRequired ? "NOT NULL" : "NULL")}";
+            return $@"{GetQuotedString(column.ColumnName)} {GetQuotedString(column.DataType)} {dataLength} {(this.Option.GenerateIdentity && column.IsIdentity ? $"IDENTITY({table.IdentitySeed},{table.IdentityIncrement})" : "")} {(column.IsRequired ? "NOT NULL" : "NULL")}";
         }
 
         private string GetColumnDataLength(TableColumn column)
@@ -446,7 +478,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
             switch (column.DataType)
             {
                 case "nchar":
-                case "nvarchar":                    
+                case "nvarchar":
                     if (column.MaxLength == -1)
                     {
                         return "max";
