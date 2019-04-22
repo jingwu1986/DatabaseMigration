@@ -1,6 +1,6 @@
 # DatabaseMigration
 Migrate objects between different databases, including schema and data.
-It supports to generate primary key, foreign key, index, identity, default value and comment, and supports datatype mapping via adding mapping file. It supports data batch submit, and considers data self reference of a table. Currently, it implements sync tables between SqlServer, Oracle and MySql.
+It supports to generate primary key, foreign key, index, identity, default value and comment, and supports datatype mapping via adding mapping file. It supports data batch submit, and considers data self reference of a table. Currently, it implements sync tables and views between SqlServer, Oracle and MySql.
 
 # Usage
 ## Console Test
@@ -33,9 +33,9 @@ class Program
 
         static void TestInterpreter()
         {
-            InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter));
-            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter));
-            //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter));
+            InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter), new SelectionInfo() { });
+            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
+            //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter), new SelectionInfo() { });
         }
 
         static void TestConvertor(DbInterpreter sourceInterpreter, DbInterpreter targetInterpreter)
