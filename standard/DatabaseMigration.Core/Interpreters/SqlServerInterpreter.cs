@@ -284,9 +284,40 @@ namespace DatabaseMigration.Core
         #region Identity
         public override void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled)
         {
-            this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedTableName(new Table() { Name = column.TableName, Owner = column.Owner })} {(enabled ? "OFF" : "ON")}");
+            this.ExecuteNonQuery(dbConnection, $"SET IDENTITY_INSERT {GetQuotedObjectName(new Table() { Name = column.TableName, Owner = column.Owner })} {(enabled ? "OFF" : "ON")}");
         }
-        #endregion       
+        #endregion
+
+        #region View        
+        public override List<View> GetViews(params string[] viewNames)
+        {
+            return this.InternalGetViews(false, viewNames).Result;
+        }
+
+        public override Task<List<View>> GetViewsAsync(params string[] viewNames)
+        {
+            return this.InternalGetViews(true, viewNames);
+        }
+
+        private async Task<List<View>> InternalGetViews(bool async = false, params string[] viewNames)
+        {
+            string sql = $@"SELECT v.name AS [Name], schema_name(v.schema_id) AS [Owner],m.definition as [Definition]
+                        FROM sys.sql_modules m
+                        JOIN sys.views v ON V.object_id=m.object_id";
+
+            if (viewNames != null && viewNames.Any())
+            {
+                string strViewNames = StringHelper.GetSingleQuotedString(viewNames);
+                sql += $" AND v.name IN ({ strViewNames })";
+            }
+
+            sql += " ORDER BY v.name";
+
+            DbConnector dbConnector = this.GetDbConnector();           
+
+            return async? await base.GetViewsAsync(dbConnector, sql): base.GetViews(dbConnector,sql);           
+        }
+        #endregion
 
         #region Generate Schema Script   
 
@@ -311,12 +342,13 @@ namespace DatabaseMigration.Core
 
             #endregion
 
+            #region Table
             foreach (Table table in schemaInfo.Tables)
             {
                 this.FeedbackInfo($"Begin generate table {table.Name} script.");
 
                 string tableName = table.Name;
-                string quotedTableName = this.GetQuotedTableName(table);
+                string quotedTableName = this.GetQuotedObjectName(table);
                 IEnumerable<TableColumn> tableColumns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName).OrderBy(item => item.Order);
 
                 bool hasBigDataType = tableColumns.Any(item => this.IsBigDataType(item));
@@ -447,6 +479,24 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 this.FeedbackInfo($"End generate table {table.Name} script.");
             }
 
+            #endregion
+
+            #region View
+            foreach (View view in schemaInfo.Views)
+            {
+                this.FeedbackInfo($"Begin generate view {view.Name} script.");
+
+                string viewName = view.Name;
+                string quotedTableName = this.GetQuotedObjectName(view);
+
+                sb.AppendLine();
+                sb.Append(view.Definition);
+                sb.AppendLine("GO");
+
+                this.FeedbackInfo($"End generate view {view.Name} script.");
+            } 
+            #endregion
+
             if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
             {
                 this.AppendScriptsToFile(sb.ToString(), GenerateScriptMode.Schema, true);
@@ -554,13 +604,13 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
         #region Generate Data Script       
         public override async Task<long> GetTableRecordCountAsync(DbConnection connection, Table table)
         {
-            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
+            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedObjectName(table)}";
 
             return await base.GetTableRecordCountAsync(connection, sql);
         }
         public override long GetTableRecordCount(DbConnection connection, Table table)
         {
-            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
+            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedObjectName(table)}";
 
             return base.GetTableRecordCount(connection, sql);
         }

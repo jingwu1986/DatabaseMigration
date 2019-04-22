@@ -37,6 +37,10 @@ namespace DatabaseMigration.Core
             {
                 item.Owner = owner;
             });
+            schemaInfo.Views.ForEach(item =>
+            {
+                item.Owner = owner;
+            });
         }
 
         public static void EnsurePrimaryKeyNameUnique(SchemaInfo schemaInfo)
@@ -108,6 +112,6 @@ namespace DatabaseMigration.Core
                     item.IndexName = item.IndexName.Substring(0, maxLength);
                 }
             });
-        }
+        }      
     }
 }

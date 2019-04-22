@@ -34,6 +34,7 @@ namespace DatabaseMigration.Core
             this.Type = element.Element("target").Attribute("type")?.Value;
             this.Length = element.Element("target").Attribute("length")?.Value;
             this.Precision = element.Element("target").Attribute("precision")?.Value;
+            this.Scale = element.Element("target").Attribute("scale")?.Value;
         }
     }
 

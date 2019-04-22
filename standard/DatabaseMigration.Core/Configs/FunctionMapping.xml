@@ -14,4 +14,19 @@
     <MySql></MySql>
     <Oracle></Oracle>
   </mapping>
+  <mapping>
+    <SqlServer>LEN</SqlServer>
+    <MySql>LENGTH</MySql>
+    <Oracle>LENGTH</Oracle>
+  </mapping>
+  <mapping>
+    <SqlServer>SUBSTRING</SqlServer>
+    <MySql>SUBSTRING</MySql>
+    <Oracle>SUBSTR</Oracle>
+  </mapping>
+  <mapping>
+    <SqlServer>CHARINDEX</SqlServer>
+    <MySql>INSTR,LOCATE,POSITION</MySql>
+    <Oracle>INSTR</Oracle>
+  </mapping>  
 </mappings>

@@ -90,6 +90,9 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="TSQL_Parser, Version=1.2.5.0, Culture=neutral, PublicKeyToken=09a45a2da17eccd6, processorArchitecture=MSIL">
+      <HintPath>..\packages\TSQL.Parser.1.2.5\lib\net452\TSQL_Parser.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Interpreter\InterpreterTestRuner.cs" />

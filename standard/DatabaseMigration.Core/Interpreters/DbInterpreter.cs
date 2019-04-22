@@ -53,13 +53,13 @@ namespace DatabaseMigration.Core
             int? bulkCopyTimeout = null,
             int? batchSize = null);
 
-        public string GetDisplayTableName(Table table, bool useQuotedString = false)
+        public string GetObjectDisplayName(DatabaseObject obj, bool useQuotedString = false)
         {
             if (this.GetType().Name == nameof(SqlServerInterpreter))
             {
-                return $"{GetString(table.Owner, useQuotedString)}.{GetString(table.Name, useQuotedString)}";
+                return $"{GetString(obj.Owner, useQuotedString)}.{GetString(obj.Name, useQuotedString)}";
             }
-            return $"{GetString(table.Name, useQuotedString)}";
+            return $"{GetString(obj.Name, useQuotedString)}";
         }
 
         private string GetString(string str, bool useQuotedString = false)
@@ -68,9 +68,9 @@ namespace DatabaseMigration.Core
         }
 
         public abstract DbConnector GetDbConnector();
-        protected string GetQuotedTableName(Table table)
+        protected string GetQuotedObjectName(DatabaseObject obj)
         {
-            return this.GetDisplayTableName(table, true);
+            return this.GetObjectDisplayName(obj, true);
         }
         protected string GetQuotedColumnNames(IEnumerable<TableColumn> columns)
         {
@@ -332,24 +332,65 @@ namespace DatabaseMigration.Core
         public virtual void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled) { }
         #endregion
 
+        #region View
+        public abstract List<View> GetViews(params string[] viewNames);
+        public abstract Task<List<View>> GetViewsAsync(params string[] viewNames);
+        protected List<View> GetViews(DbConnector dbConnector, string sql)
+        {
+            return this.InteralGetViews(dbConnector, sql, false).Result;
+        }
+
+        protected Task<List<View>> GetViewsAsync(DbConnector dbConnector, string sql)
+        {
+            return this.InteralGetViews(dbConnector, sql, true);
+        }
+
+        private async Task<List<View>> InteralGetViews(DbConnector dbConnector, string sql, bool async = false)
+        {
+            List<View> views = new List<View>();
+            using (DbConnection dbConnection = dbConnector.CreateConnection())
+            {
+                var list = async ? (await dbConnection.QueryAsync<View>(sql)) : dbConnection.Query<View>(sql);
+                if (list != null && list.Any())
+                {
+                    int i = 1;
+                    foreach (var view in list)
+                    {
+                        view.Order = i++;
+                        views.Add(view);
+                    }
+                }
+            }
+
+            this.FeedbackInfo($"Get {views.Count} views.");
+
+            return views;
+        }
+        #endregion      
+
         #region Generate Scripts
 
-        public virtual SchemaInfo GetSchemaInfo(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
+        public virtual SchemaInfo GetSchemaInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
         {
-            return this.InternalGetSchemalInfo(tableNames, userDefinedTypeNames, getAllIfNotSpecified, false).Result;
+            return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, false).Result;
         }
 
-        public virtual Task<SchemaInfo> GetSchemaInfoAsync(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true)
+        public virtual Task<SchemaInfo> GetSchemaInfoAsync(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
         {
-            return this.InternalGetSchemalInfo(tableNames, userDefinedTypeNames, getAllIfNotSpecified, true);
+            return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, true);
         }
 
-        private async Task<SchemaInfo> InternalGetSchemalInfo(string[] tableNames, string[] userDefinedTypeNames = null, bool getAllIfNotSpecified = true, bool async=false)
+        private async Task<SchemaInfo> InternalGetSchemalInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true, bool async=false)
         {
             List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
 
+            string[] userDefinedTypeNames = selectionInfo.UserDefinedTypeNames;
+            string[] tableNames = selectionInfo.TableNames;
+            string[] viewNames = selectionInfo.ViewNames;
+
             List<Table> tables = new List<Table>();
             List<TableColumn> columns = new List<TableColumn>();
+            List<View> views = new List<View>();            
 
             if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
             {
@@ -394,6 +435,11 @@ namespace DatabaseMigration.Core
                 tables = tables.OrderBy(item => item.Order).ToList();
             }
 
+            if ((viewNames != null && viewNames.Length > 0) || getAllIfNotSpecified)
+            {
+                views = async ? await this.GetViewsAsync(viewNames) : this.GetViews(viewNames);     
+            }
+
             return new SchemaInfo
             {
                 UserDefinedTypes = userDefinedTypes,
@@ -401,7 +447,8 @@ namespace DatabaseMigration.Core
                 Columns = columns,
                 TablePrimaryKeys = tablePrimaryKeys,
                 TableForeignKeys = tableForeignKeys,
-                TableIndices = tableIndices
+                TableIndices = tableIndices,
+                Views=views
             };
         }
 
@@ -529,7 +576,7 @@ namespace DatabaseMigration.Core
         }
         private Dictionary<long, List<Dictionary<string, object>>> GetSortedPageDatas(DbConnection connection, Table table, string primaryKeyColumns, string parentColumnName, List<TableColumn> columns, GenerateScriptOption option, string whereClause = "")
         {
-            string quotedTableName = this.GetQuotedTableName(table);
+            string quotedTableName = this.GetQuotedObjectName(table);
 
             int pageSize = option.DataBatchSize;
 
@@ -579,7 +626,7 @@ namespace DatabaseMigration.Core
 
         private async Task<Dictionary<long, List<Dictionary<string, object>>>> InteralGetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "", bool async = false)
         {
-            string quotedTableName = this.GetQuotedTableName(table);
+            string quotedTableName = this.GetQuotedObjectName(table);
             string columnNames = this.GetQuotedColumnNames(columns);
 
             var dictPagedData = new Dictionary<long, List<Dictionary<string, object>>>();
@@ -658,7 +705,7 @@ namespace DatabaseMigration.Core
             {
                 StringBuilder sbFilePage = new StringBuilder(Environment.NewLine);
 
-                string tableName = this.GetQuotedTableName(table);
+                string tableName = this.GetQuotedObjectName(table);
                 string insert = $"{this.GetBatchInsertPrefix()} {tableName}({this.GetQuotedColumnNames(columns.Where(item => !excludeColumnNames.Contains(item.ColumnName)))})VALUES";
 
                 if (appendString)

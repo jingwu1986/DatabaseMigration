@@ -53,19 +53,31 @@ namespace DatabaseMigration.Core
 
             string[] tableNames = null;
             string[] userDefinedTypeNames = null;
+            string[] viewNames = null;
 
             if (schemaInfo == null || getAllIfNotSpecified)
             {
                 tableNames = sourceInterpreter.GetTables().Select(item => item.Name).ToArray();
                 userDefinedTypeNames = sourceInterpreter.GetUserDefinedTypes().Select(item => item.Name).ToArray();
+                viewNames = sourceInterpreter.GetViews().Select(item=>item.Name).ToArray();
             }
             else
             {
                 tableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
                 userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
+                viewNames = schemaInfo.Views.Select(item=>item.Name).ToArray();
             }
 
-            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(tableNames, userDefinedTypeNames, getAllIfNotSpecified);
+            SelectionInfo selectionInfo = new SelectionInfo()
+            {
+                UserDefinedTypeNames = userDefinedTypeNames,
+                TableNames = tableNames,
+                ViewNames = viewNames
+            };
+
+            SchemaInfo sourceSchemaInfo = async? await sourceInterpreter.GetSchemaInfoAsync(selectionInfo, getAllIfNotSpecified): 
+                            sourceInterpreter.GetSchemaInfo(selectionInfo, getAllIfNotSpecified);
+
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);
 
             if (!string.IsNullOrEmpty(this.Target.DbOwner))
@@ -73,7 +85,8 @@ namespace DatabaseMigration.Core
                 SchemaInfoHelper.TransformOwner(targetSchemaInfo, this.Target.DbOwner);
             }
 
-            targetSchemaInfo.Columns = ColumnTranslator.TranslateColumn(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
+            targetSchemaInfo.Columns = ColumnTranslator.Translate(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
+            targetSchemaInfo.Views = ViewTranslator.Translate(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
 
             if (this.Option.EnsurePrimaryKeyNameUnique)
             {

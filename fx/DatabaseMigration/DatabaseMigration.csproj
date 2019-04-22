@@ -117,6 +117,9 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="TSQL_Parser, Version=1.2.5.0, Culture=neutral, PublicKeyToken=09a45a2da17eccd6, processorArchitecture=MSIL">
+      <HintPath>..\packages\TSQL.Parser.1.2.5\lib\net452\TSQL_Parser.dll</HintPath>
+    </Reference>
     <Reference Include="Westwind.Utilities, Version=3.0.25.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Westwind.Utilities.3.0.25\lib\net46\Westwind.Utilities.dll</HintPath>
     </Reference>
@@ -194,6 +197,10 @@
     <ProjectReference Include="..\..\standard\DatabaseMigration.Core\DatabaseMigration.Core.csproj">
       <Project>{2fd80f5d-8ebb-4a2b-a415-acc15450673e}</Project>
       <Name>DatabaseMigration.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\standard\DatabaseMigration.Infrastructure\DatabaseMigration.Infrastructure.csproj">
+      <Project>{bc99debd-959f-4b70-93f9-5a004d8b770a}</Project>
+      <Name>DatabaseMigration.Infrastructure</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\standard\DatabaseMigration.Models\DatabaseMigration.Models.csproj">
       <Project>{ff739111-b9d9-48fb-b25b-92791d6b3ad1}</Project>

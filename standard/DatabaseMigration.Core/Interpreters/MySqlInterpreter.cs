@@ -387,7 +387,38 @@ namespace DatabaseMigration.Core
         public override void SetIdentityEnabled(DbConnection dbConnection, TableColumn column, bool enabled)
         {
             Table table = new Table() { Name = column.TableName, Owner = column.Owner };
-            this.ExecuteNonQuery(dbConnection, $"ALTER TABLE {GetQuotedTableName(table)} MODIFY COLUMN {TranslateColumn(table, column)} {(enabled ? "AUTO_INCREMENT" : "")}");
+            this.ExecuteNonQuery(dbConnection, $"ALTER TABLE {GetQuotedObjectName(table)} MODIFY COLUMN {TranslateColumn(table, column)} {(enabled ? "AUTO_INCREMENT" : "")}");
+        }
+        #endregion
+
+        #region View        
+        public override List<View> GetViews(params string[] viewNames)
+        {
+            return this.InternalGetViews(false, viewNames).Result;
+        }
+
+        public override Task<List<View>> GetViewsAsync(params string[] viewNames)
+        {
+            return this.InternalGetViews(true, viewNames);
+        }
+
+        private async Task<List<View>> InternalGetViews(bool async = false, params string[] viewNames)
+        {
+            string sql = $@"SELECT TABLE_SCHEMA AS `Owner`,TABLE_NAME AS `Name`, VIEW_DEFINITION AS `Definition` 
+                        FROM INFORMATION_SCHEMA.`VIEWS`
+                        WHERE TABLE_SCHEMA = '{ConnectionInfo.Database}'";
+
+            if (viewNames != null && viewNames.Any())
+            {
+                string strViewNames = StringHelper.GetSingleQuotedString(viewNames);
+                sql += $" AND TABLE_NAME IN ({ strViewNames })";
+            }
+
+            sql += " ORDER BY TABLE_NAME";
+
+            DbConnector dbConnector = this.GetDbConnector();
+
+            return async ? await base.GetViewsAsync(dbConnector, sql) : base.GetViews(dbConnector, sql);
         }
         #endregion
 
@@ -401,7 +432,7 @@ namespace DatabaseMigration.Core
             foreach (Table table in schemaInfo.Tables)
             {
                 string tableName = table.Name;
-                string quotedTableName = this.GetQuotedTableName(table);
+                string quotedTableName = this.GetQuotedObjectName(table);
 
                 IEnumerable<TableColumn> tableColumns = schemaInfo.Columns.Where(item => item.TableName == tableName).OrderBy(item => item.Order);
 
@@ -536,6 +567,22 @@ DEFAULT CHARSET={DbCharset};");
             }
             #endregion
 
+            #region View
+            foreach (View view in schemaInfo.Views)
+            {
+                this.FeedbackInfo($"Begin generate view {view.Name} script.");
+
+                string viewName = view.Name;
+                string quotedTableName = this.GetQuotedObjectName(view);
+
+                sb.AppendLine();
+
+                sb.Append(view.Definition.TrimEnd(';')+";");
+
+                this.FeedbackInfo($"End generate view {view.Name} script.");
+            }
+            #endregion
+
             return sb.ToString();
         }
 
@@ -579,13 +626,13 @@ DEFAULT CHARSET={DbCharset};");
         #region Generate Data Script
         public override long GetTableRecordCount(DbConnection connection, Table table)
         {
-            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
+            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedObjectName(table)}";
 
             return base.GetTableRecordCount(connection, sql);
         }
         public override async Task<long> GetTableRecordCountAsync(DbConnection connection, Table table)
         {
-            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedTableName(table)}";
+            string sql = $"SELECT COUNT(1) FROM {this.GetQuotedObjectName(table)}";
 
             return await base.GetTableRecordCountAsync(connection, sql);
         }

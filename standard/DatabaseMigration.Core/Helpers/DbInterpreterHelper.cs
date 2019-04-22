@@ -30,5 +30,22 @@ namespace DatabaseMigration.Core
 
             return dbInterpreter;
         }
+
+        public static string GetOwnerName(DbInterpreter dbInterpreter)
+        {
+            if (dbInterpreter.DatabaseType == DatabaseType.Oracle)
+            {
+                return dbInterpreter.ConnectionInfo.UserId;
+            }
+            else
+            {
+                if(dbInterpreter.DatabaseType==DatabaseType.SqlServer)
+                {
+                    return "dbo";
+                }
+
+                return dbInterpreter.ConnectionInfo.Database;
+            }
+        }
     }
 }

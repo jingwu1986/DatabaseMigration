@@ -7,7 +7,7 @@ namespace DatabaseMigration.Core
 {
     public class ColumnTranslator
     {
-        public static List<TableColumn> TranslateColumn(List<TableColumn> columns, DatabaseType sourceDbType, DatabaseType targetDbType)
+        public static List<TableColumn> Translate(List<TableColumn> columns, DatabaseType sourceDbType, DatabaseType targetDbType)
         {
             if (sourceDbType == targetDbType)
             {
@@ -119,10 +119,10 @@ namespace DatabaseMigration.Core
                 if (!string.IsNullOrEmpty(column.DefaultValue))
                 {
                     string defaultValue = GetTrimedDefaultValue(column.DefaultValue);
-                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function == defaultValue));
+                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function.Split(',').Any(m=> m.ToLower() == defaultValue.ToLower())));
                     if (funcMappings != null)
                     {
-                        defaultValue = funcMappings.FirstOrDefault(item => item.DbType == targetDbType.ToString())?.Function;
+                        defaultValue = funcMappings.FirstOrDefault(item => item.DbType == targetDbType.ToString())?.Function.Split(',')?.FirstOrDefault();
                     }
                     column.DefaultValue = defaultValue;
                 }
