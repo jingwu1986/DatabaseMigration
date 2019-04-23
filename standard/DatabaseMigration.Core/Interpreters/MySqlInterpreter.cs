@@ -214,10 +214,14 @@ namespace DatabaseMigration.Core
 
             if(string.IsNullOrEmpty(this.loaderPath))
             {
-                this.loaderPath = conn.Query<string>(@"select @@global.secure_file_priv;").FirstOrDefault() ?? "";
-            }           
+                string path = conn.Query<string>(@"select @@global.secure_file_priv;").FirstOrDefault() ?? "";
 
-            loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
+                if(Directory.Exists(path))
+                {
+                    this.loaderPath = path;
+                    loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
+                }               
+            }                
 
             if (bulkCopyTimeout.HasValue)
             {
