@@ -431,6 +431,8 @@ namespace DatabaseMigration.Core
             #region Create Table
             foreach (Table table in schemaInfo.Tables)
             {
+                this.FeedbackInfo(OperationState.Begin, "table", table.Name);
+
                 string tableName = table.Name;
                 string quotedTableName = this.GetQuotedObjectName(table);
 
@@ -523,7 +525,6 @@ DEFAULT CHARSET={DbCharset};");
 
                         List<string> indexColumns = new List<string>();
 
-
                         ILookup<string, TableIndex> indexLookup = indices.ToLookup(item => item.IndexName);
                         IEnumerable<string> indexNames = indexLookup.Select(item => item.Key);
                         foreach (string indexName in indexNames)
@@ -564,13 +565,15 @@ DEFAULT CHARSET={DbCharset};");
                 //    }
                 //}
                 //#endregion
+
+                this.FeedbackInfo(OperationState.End, "table", table.Name);
             }
             #endregion
 
             #region View
             foreach (View view in schemaInfo.Views)
             {
-                this.FeedbackInfo($"Begin generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.Begin, "view", view.Name);
 
                 string viewName = view.Name;
                 string quotedTableName = this.GetQuotedObjectName(view);
@@ -579,7 +582,7 @@ DEFAULT CHARSET={DbCharset};");
 
                 sb.Append(view.Definition.TrimEnd(';')+";");
 
-                this.FeedbackInfo($"End generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.End, "view", view.Name);
             }
             #endregion
 

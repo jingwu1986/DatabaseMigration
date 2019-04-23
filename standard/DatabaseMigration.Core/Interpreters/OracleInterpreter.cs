@@ -41,7 +41,6 @@ namespace DatabaseMigration.Core
             throw new NotImplementedException();
         }
 
-
         public OracleInterpreter(ConnectionInfo connectionInfo, GenerateScriptOption options) : base(connectionInfo, options) { }
 
         public override DbConnector GetDbConnector()
@@ -246,6 +245,8 @@ namespace DatabaseMigration.Core
             #region Create Table
             foreach (Table table in schemaInfo.Tables)
             {
+                this.FeedbackInfo(OperationState.Begin, "table", table.Name);
+
                 string tableName = table.Name;
                 string quotedTableName = this.GetQuotedObjectName(table);
 
@@ -374,13 +375,15 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 //    }
                 //}
                 //#endregion
+
+                this.FeedbackInfo(OperationState.End, "table", table.Name);
             }
             #endregion
 
             #region View
             foreach (View view in schemaInfo.Views)
             {
-                this.FeedbackInfo($"Begin generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.Begin, "view", view.Name);
 
                 string viewName = view.Name;
                 string quotedTableName = this.GetQuotedObjectName(view);
@@ -388,7 +391,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 sb.AppendLine();
                 sb.Append(view.Definition);
 
-                this.FeedbackInfo($"End generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.End, "view", view.Name);
             }
             #endregion
 

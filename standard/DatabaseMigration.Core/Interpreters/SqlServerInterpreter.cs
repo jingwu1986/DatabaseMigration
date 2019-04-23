@@ -328,14 +328,14 @@ namespace DatabaseMigration.Core
             #region User Defined Type
             foreach (UserDefinedType userDefinedType in schemaInfo.UserDefinedTypes)
             {
-                this.FeedbackInfo($"Begin generate user defined type {userDefinedType.Name} script.");
+                this.FeedbackInfo(OperationState.Begin, "user defined type", userDefinedType.Name);                
 
                 TableColumn column = new TableColumn() { DataType = userDefinedType.Type, MaxLength = userDefinedType.MaxLength, Precision = userDefinedType.Precision, Scale = userDefinedType.Scale };
                 string dataLength = this.GetColumnDataLength(column);
 
                 sb.AppendLine($@"CREATE TYPE {GetQuotedString(userDefinedType.Owner)}.{GetQuotedString(userDefinedType.Name)} FROM {GetQuotedString(userDefinedType.Type)}{(dataLength == "" ? "" : "(" + dataLength + ")")} {(userDefinedType.IsRequired ? "NOT NULL" : "NULL")};");
 
-                this.FeedbackInfo($"End generate user defined type {userDefinedType.Name} script.");
+                this.FeedbackInfo(OperationState.End, "user defined type", userDefinedType.Name);
             }
 
             sb.AppendLine("GO");
@@ -345,7 +345,7 @@ namespace DatabaseMigration.Core
             #region Table
             foreach (Table table in schemaInfo.Tables)
             {
-                this.FeedbackInfo($"Begin generate table {table.Name} script.");
+                this.FeedbackInfo(OperationState.Begin, "table", table.Name);
 
                 string tableName = table.Name;
                 string quotedTableName = this.GetQuotedObjectName(table);
@@ -476,7 +476,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 }
                 #endregion
 
-                this.FeedbackInfo($"End generate table {table.Name} script.");
+                this.FeedbackInfo(OperationState.End, "table", table.Name);
             }
 
             #endregion
@@ -484,7 +484,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
             #region View
             foreach (View view in schemaInfo.Views)
             {
-                this.FeedbackInfo($"Begin generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.Begin, "view", view.Name);
 
                 string viewName = view.Name;
                 string quotedTableName = this.GetQuotedObjectName(view);
@@ -493,7 +493,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 sb.Append(view.Definition);
                 sb.AppendLine("GO");
 
-                this.FeedbackInfo($"End generate view {view.Name} script.");
+                this.FeedbackInfo(OperationState.End, "view", view.Name);
             } 
             #endregion
 

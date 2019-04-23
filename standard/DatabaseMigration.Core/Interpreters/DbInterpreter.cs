@@ -108,7 +108,7 @@ namespace DatabaseMigration.Core
             var dt = new DataTable();
             dt.Load(reader);
             return dt;
-        }       
+        }
 
         public int ExecuteNonQuery(string sql, Dictionary<string, object> paramaters = null)
         {
@@ -127,10 +127,10 @@ namespace DatabaseMigration.Core
 
         public Task<int> ExecuteNonQueryAsync(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
         {
-            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, true);   
+            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, true);
         }
 
-        public async Task<int> InteralExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async=false)
+        public async Task<int> InteralExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async = false)
         {
 #if disposeConnection
             using (dbConnection)
@@ -147,7 +147,7 @@ namespace DatabaseMigration.Core
                     }
                 }
 
-                int result= async? await dbCommander.ExecuteNonQueryAsync(): dbCommander.ExecuteNonQuery();
+                int result = async ? await dbCommander.ExecuteNonQueryAsync() : dbCommander.ExecuteNonQuery();
 
                 return result;
             }
@@ -178,6 +178,12 @@ namespace DatabaseMigration.Core
         public void FeedbackError(string message)
         {
             this.Feedback(FeedbackInfoType.Error, message);
+        }
+
+        public void FeedbackInfo(OperationState state, string objectType, string objectName)
+        {
+            string message = $"{state.ToString()} to generate script for {objectType} \"{objectName}\".";
+            this.Feedback(FeedbackInfoType.Info, message);
         }
         #endregion
 
@@ -211,7 +217,7 @@ namespace DatabaseMigration.Core
         public abstract Task<List<UserDefinedType>> GetUserDefinedTypesAsync(params string[] typeNames);
         protected List<UserDefinedType> GetUserDefinedTypes(DbConnector dbConnector, string sql)
         {
-            return InternalGetUserDefinedTypes(dbConnector,sql, false).Result;
+            return InternalGetUserDefinedTypes(dbConnector, sql, false).Result;
         }
 
         protected Task<List<UserDefinedType>> GetUserDefinedTypesAsync(DbConnector dbConnector, string sql)
@@ -219,12 +225,12 @@ namespace DatabaseMigration.Core
             return InternalGetUserDefinedTypes(dbConnector, sql, true);
         }
 
-        private async Task<List<UserDefinedType>> InternalGetUserDefinedTypes(DbConnector dbConnector, string sql, bool async=false)
+        private async Task<List<UserDefinedType>> InternalGetUserDefinedTypes(DbConnector dbConnector, string sql, bool async = false)
         {
             List<UserDefinedType> userDefinedTypes;
             using (DbConnection dbConnection = dbConnector.CreateConnection())
             {
-                userDefinedTypes = (async? (await dbConnection.QueryAsync<UserDefinedType>(sql)): dbConnection.Query<UserDefinedType>(sql)).ToList();
+                userDefinedTypes = (async ? (await dbConnection.QueryAsync<UserDefinedType>(sql)) : dbConnection.Query<UserDefinedType>(sql)).ToList();
             }
 
             this.FeedbackInfo($"Get {userDefinedTypes.Count} user defined types.");
@@ -243,10 +249,10 @@ namespace DatabaseMigration.Core
 
         protected Task<List<Table>> GetTablesAsync(DbConnector dbConnector, string sql)
         {
-            return this.InteralGetTables(dbConnector,sql,true);
+            return this.InteralGetTables(dbConnector, sql, true);
         }
 
-        private async Task<List<Table>> InteralGetTables(DbConnector dbConnector, string sql, bool async=false)
+        private async Task<List<Table>> InteralGetTables(DbConnector dbConnector, string sql, bool async = false)
         {
             List<Table> tables = new List<Table>();
             using (DbConnection dbConnection = dbConnector.CreateConnection())
@@ -380,7 +386,7 @@ namespace DatabaseMigration.Core
             return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, true);
         }
 
-        private async Task<SchemaInfo> InternalGetSchemalInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true, bool async=false)
+        private async Task<SchemaInfo> InternalGetSchemalInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true, bool async = false)
         {
             List<UserDefinedType> userDefinedTypes = new List<UserDefinedType>();
 
@@ -390,11 +396,11 @@ namespace DatabaseMigration.Core
 
             List<Table> tables = new List<Table>();
             List<TableColumn> columns = new List<TableColumn>();
-            List<View> views = new List<View>();            
+            List<View> views = new List<View>();
 
             if ((userDefinedTypeNames != null && userDefinedTypeNames.Length > 0) || getAllIfNotSpecified)
             {
-                userDefinedTypes = async? await this.GetUserDefinedTypesAsync(userDefinedTypeNames): this.GetUserDefinedTypes(userDefinedTypeNames);
+                userDefinedTypes = async ? await this.GetUserDefinedTypesAsync(userDefinedTypeNames) : this.GetUserDefinedTypes(userDefinedTypeNames);
             }
 
             List<TablePrimaryKey> tablePrimaryKeys = new List<TablePrimaryKey>();
@@ -403,7 +409,7 @@ namespace DatabaseMigration.Core
 
             if ((tableNames != null && tableNames.Length > 0) || getAllIfNotSpecified)
             {
-                tables = async? await this.GetTablesAsync(tableNames): this.GetTables(tableNames);
+                tables = async ? await this.GetTablesAsync(tableNames) : this.GetTables(tableNames);
                 columns = this.GetTableColumns(tableNames);
 
                 if (Option.GenerateKey)
@@ -437,7 +443,8 @@ namespace DatabaseMigration.Core
 
             if ((viewNames != null && viewNames.Length > 0) || getAllIfNotSpecified)
             {
-                views = async ? await this.GetViewsAsync(viewNames) : this.GetViews(viewNames);     
+                views = async ? await this.GetViewsAsync(viewNames) : this.GetViews(viewNames);
+                views = ViewHelper.ResortViews(views);
             }
 
             return new SchemaInfo
@@ -448,7 +455,7 @@ namespace DatabaseMigration.Core
                 TablePrimaryKeys = tablePrimaryKeys,
                 TableForeignKeys = tableForeignKeys,
                 TableIndices = tableIndices,
-                Views=views
+                Views = views
             };
         }
 
@@ -476,7 +483,7 @@ namespace DatabaseMigration.Core
             return this.InternalGenerateDataScripts(schemaInfo, true);
         }
 
-        private async Task<string> InternalGenerateDataScripts(SchemaInfo schemaInfo, bool async=false)
+        private async Task<string> InternalGenerateDataScripts(SchemaInfo schemaInfo, bool async = false)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -548,7 +555,7 @@ namespace DatabaseMigration.Core
                     else
                     {
                         dictPagedData = async ? await this.GetPagedDataListAsync(connection, table, columns, primaryKeyColumns, total, pageSize)
-                            : this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize); 
+                            : this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize);
                     }
 
                     this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
@@ -637,7 +644,7 @@ namespace DatabaseMigration.Core
             {
                 string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
 
-                var dataTable = async? await this.GetDataTableAsync(connection, pagedSql): this.GetDataTable(connection, pagedSql);
+                var dataTable = async ? await this.GetDataTableAsync(connection, pagedSql) : this.GetDataTable(connection, pagedSql);
 
                 List<Dictionary<string, object>> rows = new List<Dictionary<string, object>>();
                 foreach (DataRow row in dataTable.Rows)

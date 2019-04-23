@@ -169,7 +169,7 @@ namespace DatabaseMigration
                 {
                     if (names.Contains(defaultValue))
                     {
-                        profileControl.Text = profiles.FirstOrDefault(item=>item.Name==defaultValue)?.Description;
+                        profileControl.Text = profiles.FirstOrDefault(item => item.Name == defaultValue)?.Description;
                     }
                 }
 
@@ -194,17 +194,21 @@ namespace DatabaseMigration
 
             if (dbInterpreter is SqlServerInterpreter)
             {
-                TreeNode userDefinedRootNode = new TreeNode("User Defined Types");
-                userDefinedRootNode.Name = nameof(UserDefinedType);
-                this.tvSource.Nodes.Add(userDefinedRootNode);
-
                 List<UserDefinedType> userDefinedTypes = dbInterpreter.GetUserDefinedTypes();
-                foreach (UserDefinedType userDefinedType in userDefinedTypes)
+
+                if (userDefinedTypes.Count > 0)
                 {
-                    TreeNode node = new TreeNode();
-                    node.Tag = userDefinedType;
-                    node.Text = $"{userDefinedType.Owner}.{userDefinedType.Name}";
-                    userDefinedRootNode.Nodes.Add(node);
+                    TreeNode userDefinedRootNode = new TreeNode("User Defined Types");
+                    userDefinedRootNode.Name = nameof(UserDefinedType);
+                    this.tvSource.Nodes.Add(userDefinedRootNode);
+
+                    foreach (UserDefinedType userDefinedType in userDefinedTypes)
+                    {
+                        TreeNode node = new TreeNode();
+                        node.Tag = userDefinedType;
+                        node.Text = $"{userDefinedType.Owner}.{userDefinedType.Name}";
+                        userDefinedRootNode.Nodes.Add(node);
+                    }
                 }
             }
 
@@ -541,7 +545,7 @@ namespace DatabaseMigration
 
                 if (ex.InnerException != null)
                 {
-                    string detailsMsg= ex.InnerException?.InnerException?.Message??ex.InnerException.Message;
+                    string detailsMsg = ex.InnerException?.InnerException?.Message ?? ex.InnerException.Message;
                     sbFeedback.AppendLine("Inner Exception:" + detailsMsg);
                 }
                 else
