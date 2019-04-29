@@ -262,7 +262,7 @@ namespace DatabaseMigration.Core
             string sql = $@"SELECT TABLE_SCHEMA AS `Owner`, TABLE_NAME AS `Name`, TABLE_COMMENT AS `Comment`,
                         1 AS `IdentitySeed`, 1 AS `IdentityIncrement`
                         FROM INFORMATION_SCHEMA.`TABLES`
-                        WHERE TABLE_SCHEMA ='{ConnectionInfo.Database}' 
+                        WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA ='{ConnectionInfo.Database}' 
                         ";
 
             if (tableNames != null && tableNames.Any())
@@ -299,17 +299,18 @@ namespace DatabaseMigration.Core
         {
             DbConnector dbConnector = this.GetDbConnector();
 
-            string sql = $@"SELECT TABLE_SCHEMA AS `Owner`, TABLE_NAME AS TableName, COLUMN_NAME AS ColumnName, COLUMN_TYPE AS DataType, 
+            string sql = $@"SELECT C.TABLE_SCHEMA AS `Owner`, C.TABLE_NAME AS TableName, COLUMN_NAME AS ColumnName, COLUMN_TYPE AS DataType, 
                         CHARACTER_MAXIMUM_LENGTH AS MaxLength, CASE IS_NULLABLE WHEN 'YES' THEN 1 ELSE 0 END AS IsNullable,ORDINAL_POSITION AS `Order`,
                         NUMERIC_PRECISION AS `Precision`,NUMERIC_SCALE AS `Scale`, COLUMN_DEFAULT AS `DefaultValue`,COLUMN_COMMENT AS `Comment`,
                         CASE EXTRA WHEN 'auto_increment' THEN 1 ELSE 0 END AS `IsIdentity`,'' AS `TypeOwner`
-                        FROM INFORMATION_SCHEMA.`COLUMNS`
-                        WHERE TABLE_SCHEMA ='{ConnectionInfo.Database}'";
+                        FROM INFORMATION_SCHEMA.`COLUMNS` AS C
+                        JOIN INFORMATION_SCHEMA.`TABLES` AS T ON T.`TABLE_NAME`= C.`TABLE_NAME` AND T.TABLE_TYPE='BASE TABLE' AND T.TABLE_SCHEMA=C.TABLE_SCHEMA
+                        WHERE C.TABLE_SCHEMA ='{ConnectionInfo.Database}'";
 
             if (tableNames != null && tableNames.Count() > 0)
             {
                 string strTableNames = StringHelper.GetSingleQuotedString(tableNames);
-                sql += $" AND TABLE_NAME IN ({ strTableNames })";
+                sql += $" AND C.TABLE_NAME IN ({ strTableNames })";
             }
 
             return base.GetTableColumns(dbConnector, sql);
@@ -618,7 +619,7 @@ DEFAULT CHARSET={DbCharset};");
                 }
             }
 
-            return $@"{GetQuotedString(column.ColumnName)} {dataType} {(column.IsRequired ? "NOT NULL" : "NULL")} {(this.Option.GenerateIdentity && column.IsIdentity ? $"AUTO_INCREMENT" : "")} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + column.DefaultValue)} {(!string.IsNullOrEmpty(column.Comment) ? $"comment '{ValueHelper.TransferSingleQuotation(column.Comment)}'" : "")}";
+            return $@"{GetQuotedString(column.ColumnName)} {dataType} {(column.IsRequired ? "NOT NULL" : "NULL")} {(this.Option.GenerateIdentity && column.IsIdentity ? $"AUTO_INCREMENT" : "")} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + this.GetColumnDefaultValue(column))} {(!string.IsNullOrEmpty(column.Comment) ? $"comment '{ValueHelper.TransferSingleQuotation(column.Comment)}'" : "")}";
         }
 
         private bool IsNoLengthDataType(string dataType)

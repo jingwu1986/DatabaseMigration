@@ -439,7 +439,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 }
             }
 
-            return $@"{ GetQuotedString(column.ColumnName)} {dataType} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + column.DefaultValue)} {(column.IsRequired ? "NOT NULL" : "NULL")}";
+            return $@"{ GetQuotedString(column.ColumnName)} {dataType} {(string.IsNullOrEmpty(column.DefaultValue) ? "" : " DEFAULT " + this.GetColumnDefaultValue(column))} {(column.IsRequired ? "NOT NULL" : "NULL")}";
         }
 
         private bool IsNoLengthDataType(string dataType)

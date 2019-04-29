@@ -976,6 +976,16 @@ namespace DatabaseMigration.Core
         {
             return UnicodeInsertChar;
         }
+
+        protected virtual string GetColumnDefaultValue(TableColumn column)
+        {
+            bool isChar = DataTypeHelper.IsCharType(column.DataType);
+            if(isChar && !column.DefaultValue.StartsWith("'"))
+            {
+                return $"'{column.DefaultValue}'";
+            }
+            return column.DefaultValue;
+        }
         #endregion
     }
 }

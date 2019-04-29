@@ -471,7 +471,7 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                     IEnumerable<TableColumn> defaultValueColumns = schemaInfo.Columns.Where(item => item.Owner == table.Owner && item.TableName == tableName && !string.IsNullOrEmpty(item.DefaultValue));
                     foreach (TableColumn column in defaultValueColumns)
                     {
-                        sb.AppendLine($"ALTER TABLE {quotedTableName} ADD CONSTRAINT {GetQuotedString($" DF_{tableName}_{column.ColumnName}")}  DEFAULT {column.DefaultValue} FOR [{column.ColumnName}];");
+                        sb.AppendLine($"ALTER TABLE {quotedTableName} ADD CONSTRAINT {GetQuotedString($" DF_{tableName}_{column.ColumnName}")}  DEFAULT {this.GetColumnDefaultValue(column)} FOR [{column.ColumnName}];");
                     }
                 }
                 #endregion
