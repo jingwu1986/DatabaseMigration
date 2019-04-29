@@ -390,6 +390,7 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
 
                 sb.AppendLine();
                 sb.Append(view.Definition);
+                sb.Append(";");
 
                 this.FeedbackInfo(OperationState.End, "view", view.Name);
             }

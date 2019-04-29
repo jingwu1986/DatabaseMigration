@@ -229,7 +229,7 @@ namespace DatabaseMigration
             viewRootNode.Name = nameof(DatabaseMigration.Core.View);
             this.tvSource.Nodes.Add(viewRootNode);
 
-            List<DatabaseMigration.Core.View> views = dbInterpreter.GetViews();
+            List<DatabaseMigration.Core.View> views = ViewHelper.ResortViews(dbInterpreter.GetViews());
             foreach (var view in views)
             {
                 TreeNode viewNode = new TreeNode();

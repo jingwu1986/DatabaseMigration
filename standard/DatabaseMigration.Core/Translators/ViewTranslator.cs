@@ -54,7 +54,7 @@ namespace DatabaseMigration.Core
                 {
                     targetOwnerName = DbInterpreterHelper.GetOwnerName(targetDbInterpreter);
                 }
-            }           
+            }
 
             foreach (View view in views)
             {
@@ -65,7 +65,12 @@ namespace DatabaseMigration.Core
 
                 definition = definition
                            .Replace(sourceDbInterpreter.QuotationLeftChar, '"')
-                           .Replace(sourceDbInterpreter.QuotationRightChar, '"');               
+                           .Replace(sourceDbInterpreter.QuotationRightChar, '"')
+                           .Replace("<>", "!=")
+                           .Replace(">", " > ")
+                           .Replace("<", " < ")
+                           .Replace("!=", "<>");
+
 
                 definition = ParseDefinition(definition, sourceDbInterpreter, targetDbInterpreter, sourceOwnerName, dataTypeMappings, functionMappings);
 
@@ -93,26 +98,32 @@ namespace DatabaseMigration.Core
             var tokens = ParseTokens(definition);
 
             bool ignore = false;
-
-            foreach(var token in tokens)
+            bool hasChanged = false;
+            foreach (var token in tokens)
             {
                 string text = token.Text;
 
-                switch(token.Type)
-                {                    
-                    case TSQLTokenType.SystemIdentifier:
-                        //reverse argument and change data type
-                        if (text.ToUpper() == "CONVERT")
+                int startIndex = -1;
+                int endIndex = -1;
+                int leftBracketCount = 0;
+                int rightBracketCount = 0;
+                string dataType = "";
+                string newDataType = "";
+
+                switch (token.Type)
+                {
+                    case TSQLTokenType.SystemIdentifier:                      
+
+                        switch (text.ToUpper())
                         {
-                            if (targetDbInterpreter is MySqlInterpreter)
-                            {
-                                int startIndex = token.BeginPosition;
-                                int endIndex = definition.Substring(startIndex).ToUpper().IndexOf("AS") + startIndex;
+                            case "CONVERT":
+                                startIndex = token.BeginPosition;
+                                endIndex = definition.Substring(startIndex).ToUpper().IndexOf("AS") + startIndex;
 
                                 string functionBody = definition.Substring(startIndex, endIndex - startIndex);
 
-                                int leftBracketCount = functionBody.Length - functionBody.Replace("(", "").Length;
-                                int rightBracketCount = functionBody.Length - functionBody.Replace(")", "").Length;
+                                leftBracketCount = functionBody.Length - functionBody.Replace("(", "").Length;
+                                rightBracketCount = functionBody.Length - functionBody.Replace(")", "").Length;
 
                                 if (leftBracketCount < rightBracketCount)
                                 {
@@ -131,36 +142,97 @@ namespace DatabaseMigration.Core
                                     }
                                 }
 
-                                string mainBody = functionBody.ToUpper().Replace("CONVERT", "");
+                                string mainBody = Regex.Replace(functionBody, "CONVERT", "", RegexOptions.IgnoreCase);
                                 mainBody = mainBody.Substring(0, mainBody.Length - 1).Substring(1);
 
                                 string[] args = mainBody.Split(',');
-
-                                if (sourceDbInterpreter is SqlServerInterpreter)
+                                string expression = "";                                
+                                dataType = "";
+                                
+                                if(sourceDbInterpreter is SqlServerInterpreter)
                                 {
-                                    string dataType = args[0];
+                                    dataType = args[0];
+                                    expression = args[1];
+                                }
+                                else if(sourceDbInterpreter is MySqlInterpreter)
+                                {
+                                    dataType = args[1];
+                                    expression = args[0];
+                                }
+                                
+                                newDataType = GetNewDataType(dataTypeMappings, dataType);
+                                
+                                string newFunctionBody = "";                                
 
-                                    DataTypeMapping dataTypeMapping = dataTypeMappings.FirstOrDefault(item => item.Source.Type?.ToLower() == dataType?.ToLower());
-                                    if (dataTypeMapping != null)
+                                if (targetDbInterpreter is OracleInterpreter)
+                                {
+                                    newFunctionBody = $"CAST({expression} AS {newDataType})";
+                                }
+                                else if
+                                (
+                                    (sourceDbInterpreter is SqlServerInterpreter || sourceDbInterpreter is MySqlInterpreter)
+                                    &&
+                                    (targetDbInterpreter is SqlServerInterpreter || targetDbInterpreter is MySqlInterpreter)
+                                )
+                                {
+                                    newFunctionBody = ExchangeFunctionArgs(text,  newDataType, expression);
+                                }
+
+                                definition = definition.Replace(functionBody, newFunctionBody);
+
+                                hasChanged = true;
+                                break;                           
+                        }
+
+                        break;
+
+                    case TSQLTokenType.Identifier:
+                        switch(text.ToUpper())
+                        {
+                            case "CAST":
+                                startIndex = token.BeginPosition;
+                                int asIndex = startIndex + definition.Substring(startIndex).ToUpper().IndexOf(" AS ");
+                              
+                                string arg = definition.Substring(token.EndPosition + 1, asIndex - startIndex -3);
+
+                                int functionEndIndex = -1;
+                                for (int i = asIndex + 3; i < definition.Length; i++)
+                                {
+                                    if (definition[i] == '(')
                                     {
-                                        DataTypeMappingTarget target = dataTypeMapping.Tareget;
-                                        string newDataType = target.Type;
-                                        if (!string.IsNullOrEmpty(target.Precision) && !string.IsNullOrEmpty(target.Scale))
-                                        {
-                                            newDataType += $"({target.Precision},{target.Scale})";
-                                        }
+                                        leftBracketCount++;
+                                    }
+                                    else if (definition[i] == ')')
+                                    {
+                                        rightBracketCount++;
+                                    }
 
-                                        string newFunctionBody = $"{text}({args[1]},{newDataType})";
-                                        definition = definition.Replace(functionBody, newFunctionBody);                                       
+                                    if (rightBracketCount - leftBracketCount == 1)
+                                    {
+                                        dataType = definition.Substring(asIndex + 4, i - asIndex-4);
+                                        functionEndIndex = i;
+                                        break;
                                     }
                                 }
-                            }
-                        }                     
+
+                                newDataType = GetNewDataType(dataTypeMappings, dataType);
+
+                                definition = definition.Replace(dataType, newDataType);
+
+                                hasChanged = true;
+
+                                break;
+                        }
+
                         break;
                 }
             }
 
-            tokens = ParseTokens(definition);
+            if (hasChanged)
+            {
+                tokens = ParseTokens(definition);
+            }
+
             for (int i = 0; i < tokens.Count; i++)
             {
                 if (ignore)
@@ -209,10 +281,26 @@ namespace DatabaseMigration.Core
                         {
                             sb.Append($"{targetDbInterpreter.QuotationLeftChar}{text.Trim('"')}{targetDbInterpreter.QuotationRightChar}");
                         }
-                        break;                   
+                        break;
                     case TSQLTokenType.SingleLineComment:
                     case TSQLTokenType.MultilineComment:
                         continue;
+                    case TSQLTokenType.Keyword:
+                        switch (text.ToUpper())
+                        {
+                            case "AS":
+                                if (targetDbInterpreter is OracleInterpreter)
+                                {
+                                    var previousKeyword = (from t in tokens where t.Type == TSQLTokenType.Keyword && t.EndPosition < token.BeginPosition select t).LastOrDefault();
+                                    if (previousKeyword != null && previousKeyword.Text.ToUpper() == "FROM")
+                                    {
+                                        continue;
+                                    }
+                                }
+                                break;
+                        }
+                        sb.Append(token.Text);
+                        break;
                     default:
                         sb.Append(token.Text);
                         break;
@@ -223,9 +311,50 @@ namespace DatabaseMigration.Core
             return definition;
         }
 
+        private static string ExchangeFunctionArgs(string functionName, string args1, string args2)
+        {
+            string newFunctionBody = $"{functionName}({args2},{args1})";
+
+            return newFunctionBody;
+        }
+
+        private static DataTypeMapping GetDataTypeMapping(List<DataTypeMapping> mappings, string dataType)
+        {
+            return mappings.FirstOrDefault(item => item.Source.Type?.ToLower() == dataType?.ToLower());
+        }
+
+        private static string GetNewDataType(List<DataTypeMapping> mappings, string dataType)
+        {
+            string cleanDataType = dataType.Split('(')[0];
+            string newDataType = cleanDataType;
+            bool hasPrecisionScale = false;
+
+            if(cleanDataType != dataType)
+            {
+                hasPrecisionScale = true;
+            }
+
+            DataTypeMapping mapping = GetDataTypeMapping(mappings, cleanDataType);
+            if(mapping!=null)
+            {
+                DataTypeMappingTarget targetDataType = mapping.Tareget;
+                newDataType = targetDataType.Type;
+                if (!hasPrecisionScale && !string.IsNullOrEmpty(targetDataType.Precision) && !string.IsNullOrEmpty(targetDataType.Scale))
+                {
+                    newDataType += $"({targetDataType.Precision},{targetDataType.Scale})";
+                }
+                else if(hasPrecisionScale)
+                {
+                    newDataType += "(" + dataType.Split('(')[1];
+                }
+            }
+
+            return newDataType;
+        }
+
         private static List<TSQL.Tokens.TSQLToken> ParseTokens(string sql)
         {
             return TSQLStatementReader.ParseStatements(sql, true, true).FirstOrDefault().Tokens;
         }
-    }    
+    }
 }
