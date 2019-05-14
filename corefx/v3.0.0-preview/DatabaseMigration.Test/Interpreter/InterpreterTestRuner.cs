@@ -9,8 +9,11 @@ namespace DatabaseMigration.Test
 {
     public class InterpreterTestRuner
     {
-        public static void Run(InterpreterTest test, params string []tableNames)
+        public static void Run(InterpreterTest test, SelectionInfo selectionInfo)
         {
+            string[] tableNames = selectionInfo.TableNames;
+            string[] viewNames = selectionInfo.ViewNames;
+
             List<Table> tables = test.GetTables(tableNames);
             OutputHelper.Output(FormatName(test, "GetTables"), tables, true);
 
@@ -26,10 +29,18 @@ namespace DatabaseMigration.Test
             List<TableIndex> tableIndices = test.GetTableIndexes(tableNames);
             OutputHelper.Output(FormatName(test, "GetTableIndexes"), tableIndices, true);
 
-            string schema =  test.GenerateSchemaScripts(tableNames);
+            List<View> views = test.GetViews(viewNames);
+
+            SchemaInfo schemaInfo = new SchemaInfo()
+            {
+                Tables = tables,
+                Views = views
+            };
+
+            string schema =  test.GenerateSchemaScripts(schemaInfo);
             OutputHelper.Output(FormatName(test, "GenerateSchemaScripts"), schema, false);
 
-            string data = test.GenerateDataScripts(tableNames);
+            string data = test.GenerateDataScripts(schemaInfo);
             OutputHelper.Output(FormatName(test, "GenerateDataScripts"), data, false);
         }     
         

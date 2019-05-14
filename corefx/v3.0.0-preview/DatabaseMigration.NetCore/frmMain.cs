@@ -169,7 +169,7 @@ namespace DatabaseMigration
                 {
                     if (names.Contains(defaultValue))
                     {
-                        profileControl.Text = defaultValue;
+                        profileControl.Text = profiles.FirstOrDefault(item => item.Name == defaultValue)?.Description;
                     }
                 }
 
@@ -194,17 +194,21 @@ namespace DatabaseMigration
 
             if (dbInterpreter is SqlServerInterpreter)
             {
-                TreeNode userDefinedRootNode = new TreeNode("User Defined Types");
-                userDefinedRootNode.Name = nameof(UserDefinedType);
-                this.tvSource.Nodes.Add(userDefinedRootNode);
-
                 List<UserDefinedType> userDefinedTypes = dbInterpreter.GetUserDefinedTypes();
-                foreach (UserDefinedType userDefinedType in userDefinedTypes)
+
+                if (userDefinedTypes.Count > 0)
                 {
-                    TreeNode node = new TreeNode();
-                    node.Tag = userDefinedType;
-                    node.Text = $"{userDefinedType.Owner}.{userDefinedType.Name}";
-                    userDefinedRootNode.Nodes.Add(node);
+                    TreeNode userDefinedRootNode = new TreeNode("User Defined Types");
+                    userDefinedRootNode.Name = nameof(UserDefinedType);
+                    this.tvSource.Nodes.Add(userDefinedRootNode);
+
+                    foreach (UserDefinedType userDefinedType in userDefinedTypes)
+                    {
+                        TreeNode node = new TreeNode();
+                        node.Tag = userDefinedType;
+                        node.Text = $"{userDefinedType.Owner}.{userDefinedType.Name}";
+                        userDefinedRootNode.Nodes.Add(node);
+                    }
                 }
             }
 
@@ -217,8 +221,21 @@ namespace DatabaseMigration
             {
                 TreeNode tableNode = new TreeNode();
                 tableNode.Tag = table;
-                tableNode.Text = dbInterpreter.GetDisplayTableName(table, false);
+                tableNode.Text = dbInterpreter.GetObjectDisplayName(table, false);
                 tableRootNode.Nodes.Add(tableNode);
+            }
+
+            TreeNode viewRootNode = new TreeNode("Views");
+            viewRootNode.Name = nameof(DatabaseMigration.Core.View);
+            this.tvSource.Nodes.Add(viewRootNode);
+
+            List<DatabaseMigration.Core.View> views = ViewHelper.ResortViews(dbInterpreter.GetViews());
+            foreach (var view in views)
+            {
+                TreeNode viewNode = new TreeNode();
+                viewNode.Tag = view;
+                viewNode.Text = dbInterpreter.GetObjectDisplayName(view, false);
+                viewRootNode.Nodes.Add(viewNode);
             }
         }
 
@@ -350,6 +367,9 @@ namespace DatabaseMigration
                             case nameof(Table):
                                 schemaInfo.Tables.Add(item.Tag as Table);
                                 break;
+                            case nameof(DatabaseMigration.Core.View):
+                                schemaInfo.Views.Add(item.Tag as DatabaseMigration.Core.View);
+                                break;
                         }
                     }
                 }
@@ -359,7 +379,7 @@ namespace DatabaseMigration
 
         private bool ValidateSource(SchemaInfo schemaInfo)
         {
-            if (schemaInfo.UserDefinedTypes.Count == 0 && schemaInfo.Tables.Count == 0)
+            if (schemaInfo.UserDefinedTypes.Count == 0 && schemaInfo.Tables.Count == 0 && schemaInfo.Views.Count == 0)
             {
                 MessageBox.Show("Please select objects from tree.");
                 return false;
@@ -464,6 +484,7 @@ namespace DatabaseMigration
 
             DbConvertor dbConvertor = new DbConvertor(source, target, null);
             dbConvertor.Option.GenerateScriptMode = scriptMode;
+            dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
 
             dbConvertor.OnFeedback += Feedback;
 
@@ -502,7 +523,15 @@ namespace DatabaseMigration
             bool success = false;
             try
             {
-                await dbConvertor.ConvertAsync(schemaInfo, false);
+                if (this.chkAsync.Checked)
+                {
+                    await dbConvertor.ConvertAsync(schemaInfo, false);
+                }
+                else
+                {
+                    dbConvertor.Convert(schemaInfo, false);
+                }
+
                 success = true;
 
                 if (dataErrorProfile != null)
@@ -514,10 +543,14 @@ namespace DatabaseMigration
             {
                 string errMsg = ex.Message;
 
-                sbFeedback.AppendLine("Error:" + ex.Message);
                 if (ex.InnerException != null)
                 {
-                    sbFeedback.AppendLine("Innser Exception:" + ex.InnerException.Message);
+                    string detailsMsg = ex.InnerException?.InnerException?.Message ?? ex.InnerException.Message;
+                    sbFeedback.AppendLine("Inner Exception:" + detailsMsg);
+                }
+                else
+                {
+                    sbFeedback.AppendLine("Error:" + ex.Message);
                 }
 
                 if (!string.IsNullOrEmpty(ex.StackTrace))
@@ -525,7 +558,7 @@ namespace DatabaseMigration
                     sbFeedback.AppendLine(ex.StackTrace);
                 }
 
-                this.AppendErrorMessage(errMsg);
+                this.AppendErrorMessage(sbFeedback.ToString());
 
                 this.txtMessage.SelectionStart = this.txtMessage.TextLength;
                 this.txtMessage.ScrollToCaret();
@@ -627,7 +660,7 @@ namespace DatabaseMigration
             DatabaseType sourceDbType = this.GetDatabaseType(this.cboSourceDB.Text);
 
             int dataBatchSize = SettingManager.Setting.DataBatchSize;
-            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.None, DataBatchSize = dataBatchSize };
+            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.WriteToFile, DataBatchSize = dataBatchSize };
 
             this.SetGenerateScriptOption(sourceScriptOption);
 
@@ -640,7 +673,17 @@ namespace DatabaseMigration
 
             DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(sourceDbType, this.sourceDbConnectionInfo, sourceScriptOption);
             string[] tableNames = schemaInfo.Tables.Select(item => item.Name).ToArray();
-            schemaInfo = dbInterpreter.GetSchemaInfo(tableNames);
+            string[] userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
+            string[] viewNames = schemaInfo.Views.Select(item => item.Name).ToArray();
+
+            SelectionInfo selectionInfo = new SelectionInfo()
+            {
+                UserDefinedTypeNames = userDefinedTypeNames,
+                TableNames = tableNames,
+                ViewNames = viewNames
+            };
+
+            schemaInfo = dbInterpreter.GetSchemaInfo(selectionInfo, false);
 
             dbInterpreter.Subscribe(this);
 

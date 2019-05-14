@@ -50,19 +50,34 @@ namespace DatabaseMigration.Test
         }
         #endregion
 
-        #region Schema Scripts
-        public string GenerateSchemaScripts(params string[] tableNames)
+        #region View
+        public List<View> GetViews(params string[] viewNames)
         {
-            SchemaInfo schemaInfo = Interpreter.GetSchemaInfo(tableNames);
-            return Interpreter.GenerateSchemaScripts(schemaInfo);
+            return Interpreter.GetViews(viewNames);
+        }
+        #endregion
+
+        #region Schema Scripts
+        public string GenerateSchemaScripts(SchemaInfo schemaInfo)
+        {
+            SelectionInfo selectionInfo = new SelectionInfo()
+            {
+                TableNames = schemaInfo.Tables.Select(item => item.Name).ToArray()
+            };
+            
+            return Interpreter.GenerateSchemaScripts(Interpreter.GetSchemaInfo(selectionInfo, false));
         }
         #endregion
 
         #region Data Scripts
-        public string GenerateDataScripts(params string[] tableNames)
+        public string GenerateDataScripts(SchemaInfo schemaInfo)
         {
-            SchemaInfo schemaInfo = Interpreter.GetSchemaInfo(tableNames);
-            return Interpreter.GenerateDataScripts(schemaInfo);
+            SelectionInfo selectionInfo = new SelectionInfo()
+            {
+                TableNames = schemaInfo.Tables.Select(item => item.Name).ToArray()
+            };
+           
+            return Interpreter.GenerateDataScripts(Interpreter.GetSchemaInfo(selectionInfo, false));
         } 
         #endregion
     }

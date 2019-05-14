@@ -1,4 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Text;
 using DatabaseMigration.Core;
 
 namespace DatabaseMigration.Test
@@ -30,9 +35,9 @@ namespace DatabaseMigration.Test
 
         static void TestInterpreter()
         {
-            InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter));
-            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter));
-            //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter));
+            InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter), new SelectionInfo() { });
+            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
+            //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter), new SelectionInfo() { });
         }
 
         static void TestConvertor(DbInterpreter sourceInterpreter, DbInterpreter targetInterpreter)

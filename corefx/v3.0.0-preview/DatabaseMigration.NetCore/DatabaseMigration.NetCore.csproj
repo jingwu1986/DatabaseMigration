@@ -12,6 +12,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\standard\DatabaseMigration.Core\DatabaseMigration.Core.csproj" />
-  </ItemGroup>
-
+  </ItemGroup> 
 </Project>
