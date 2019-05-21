@@ -1,4 +1,5 @@
-﻿using System.Data.Common;
+﻿using Oracle.ManagedDataAccess.Client;
+using System.Data.Common;
 using Westwind.Utilities;
 
 namespace DatabaseMigration.Core
@@ -22,7 +23,17 @@ namespace DatabaseMigration.Core
 
         public DbConnection CreateConnection()
         {
-            DbProviderFactory factory = DataUtils.GetDbProviderFactory(this._dbProvider.ProviderName);
+            DbProviderFactory factory = null;
+
+            if (this._dbProvider.ProviderName.ToLower().Contains("oracle"))
+            {
+                factory = new OracleClientFactory();                
+            }
+            else
+            {
+                factory = DataUtils.GetDbProviderFactory(this._dbProvider.ProviderName);
+            }            
+           
             DbConnection connection = factory.CreateConnection();
             if (connection != null)
             {
