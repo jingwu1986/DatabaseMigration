@@ -12,7 +12,7 @@ namespace DatabaseMigration.Test
     {
         static ConnectionInfo sqlServerConn = new ConnectionInfo() { Server = "127.0.0.1", Database = "Northwind", UserId = "sa", Password = "123" };
         static ConnectionInfo mySqlConn = new ConnectionInfo() { Server = "localhost", Database = "northwind", UserId = "sa", Password = "1234" };
-        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "test", UserId = "C##TEST", Password = "test" };
+        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "northwind", UserId = "C##TEST", Password = "test" };
 
         static GenerateScriptOption option = new GenerateScriptOption()
         {
@@ -36,7 +36,7 @@ namespace DatabaseMigration.Test
         static void TestInterpreter()
         {
             InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter), new SelectionInfo() { });
-            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
+            InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
             //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter), new SelectionInfo() { });
         }
 
