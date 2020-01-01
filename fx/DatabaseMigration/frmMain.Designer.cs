@@ -28,17 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmMain));
             this.cboSourceDB = new System.Windows.Forms.ComboBox();
             this.cboTargetDB = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
-            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
-            this.settingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.cboSourceProfile = new System.Windows.Forms.ComboBox();
             this.cboTargetProfile = new System.Windows.Forms.ComboBox();
             this.tvSource = new System.Windows.Forms.TreeView();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.chkAsync = new System.Windows.Forms.CheckBox();
+            this.chkBulkCopy = new System.Windows.Forms.CheckBox();
             this.chkGenerateIdentity = new System.Windows.Forms.CheckBox();
             this.chkPickup = new System.Windows.Forms.CheckBox();
             this.chkScriptData = new System.Windows.Forms.CheckBox();
@@ -59,18 +60,18 @@
             this.sourceScriptBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.btnCancel = new System.Windows.Forms.Button();
             this.grpMessage = new System.Windows.Forms.GroupBox();
-            this.btnSaveMessage = new System.Windows.Forms.Button();
-            this.btnCopyMessage = new System.Windows.Forms.Button();
             this.txtMessage = new System.Windows.Forms.RichTextBox();
             this.saveFileDialog1 = new System.Windows.Forms.SaveFileDialog();
+            this.btnSaveMessage = new System.Windows.Forms.Button();
+            this.btnCopyMessage = new System.Windows.Forms.Button();
             this.btnRemoveTarget = new System.Windows.Forms.Button();
             this.btnRemoveSource = new System.Windows.Forms.Button();
             this.btnConfigTarget = new System.Windows.Forms.Button();
             this.btnConfigSource = new System.Windows.Forms.Button();
             this.btnAddTarget = new System.Windows.Forms.Button();
             this.btnAddSource = new System.Windows.Forms.Button();
-            this.chkBulkCopy = new System.Windows.Forms.CheckBox();
-            this.chkAsync = new System.Windows.Forms.CheckBox();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
+            this.settingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.grpMessage.SuspendLayout();
@@ -123,24 +124,6 @@
             this.menuStrip1.Size = new System.Drawing.Size(696, 25);
             this.menuStrip1.TabIndex = 4;
             this.menuStrip1.Text = "menuStrip1";
-            // 
-            // toolStripMenuItem1
-            // 
-            this.toolStripMenuItem1.BackColor = System.Drawing.SystemColors.MenuBar;
-            this.toolStripMenuItem1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
-            this.toolStripMenuItem1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.settingToolStripMenuItem});
-            this.toolStripMenuItem1.Image = global::DatabaseMigration.Properties.Resources.Config;
-            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(74, 21);
-            this.toolStripMenuItem1.Text = "Config";
-            // 
-            // settingToolStripMenuItem
-            // 
-            this.settingToolStripMenuItem.Name = "settingToolStripMenuItem";
-            this.settingToolStripMenuItem.Size = new System.Drawing.Size(122, 22);
-            this.settingToolStripMenuItem.Text = "Settings";
-            this.settingToolStripMenuItem.Click += new System.EventHandler(this.settingToolStripMenuItem_Click);
             // 
             // cboSourceProfile
             // 
@@ -208,6 +191,26 @@
             this.groupBox1.TabIndex = 13;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Options";
+            // 
+            // chkAsync
+            // 
+            this.chkAsync.AutoSize = true;
+            this.chkAsync.Location = new System.Drawing.Point(9, 260);
+            this.chkAsync.Name = "chkAsync";
+            this.chkAsync.Size = new System.Drawing.Size(180, 16);
+            this.chkAsync.TabIndex = 16;
+            this.chkAsync.Text = "Use async to transfer data";
+            this.chkAsync.UseVisualStyleBackColor = true;
+            // 
+            // chkBulkCopy
+            // 
+            this.chkBulkCopy.AutoSize = true;
+            this.chkBulkCopy.Location = new System.Drawing.Point(9, 231);
+            this.chkBulkCopy.Name = "chkBulkCopy";
+            this.chkBulkCopy.Size = new System.Drawing.Size(186, 16);
+            this.chkBulkCopy.TabIndex = 15;
+            this.chkBulkCopy.Text = "Use BulkCopy to insert data";
+            this.chkBulkCopy.UseVisualStyleBackColor = true;
             // 
             // chkGenerateIdentity
             // 
@@ -302,7 +305,7 @@
             // 
             // btnOutputFolder
             // 
-            this.btnOutputFolder.Location = new System.Drawing.Point(286, 282);
+            this.btnOutputFolder.Location = new System.Drawing.Point(286, 283);
             this.btnOutputFolder.Name = "btnOutputFolder";
             this.btnOutputFolder.Size = new System.Drawing.Size(36, 23);
             this.btnOutputFolder.TabIndex = 4;
@@ -351,7 +354,7 @@
             // 
             this.btnConnect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnConnect.Font = new System.Drawing.Font("宋体", 10.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.btnConnect.Location = new System.Drawing.Point(609, 27);
+            this.btnConnect.Location = new System.Drawing.Point(609, 26);
             this.btnConnect.Name = "btnConnect";
             this.btnConnect.Size = new System.Drawing.Size(75, 49);
             this.btnConnect.TabIndex = 16;
@@ -397,6 +400,19 @@
             this.grpMessage.TabStop = false;
             this.grpMessage.Text = "Message";
             // 
+            // txtMessage
+            // 
+            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtMessage.BackColor = System.Drawing.Color.White;
+            this.txtMessage.Location = new System.Drawing.Point(6, 17);
+            this.txtMessage.Name = "txtMessage";
+            this.txtMessage.ReadOnly = true;
+            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
+            this.txtMessage.Size = new System.Drawing.Size(632, 67);
+            this.txtMessage.TabIndex = 0;
+            this.txtMessage.Text = "";
+            // 
             // btnSaveMessage
             // 
             this.btnSaveMessage.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -418,19 +434,6 @@
             this.btnCopyMessage.TabIndex = 8;
             this.btnCopyMessage.UseVisualStyleBackColor = true;
             this.btnCopyMessage.Click += new System.EventHandler(this.btnCopyMessage_Click);
-            // 
-            // txtMessage
-            // 
-            this.txtMessage.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtMessage.BackColor = System.Drawing.Color.White;
-            this.txtMessage.Location = new System.Drawing.Point(6, 17);
-            this.txtMessage.Name = "txtMessage";
-            this.txtMessage.ReadOnly = true;
-            this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.txtMessage.Size = new System.Drawing.Size(632, 67);
-            this.txtMessage.TabIndex = 0;
-            this.txtMessage.Text = "";
             // 
             // btnRemoveTarget
             // 
@@ -497,7 +500,7 @@
             // 
             this.btnAddTarget.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnAddTarget.Image = global::DatabaseMigration.Properties.Resources.Add;
-            this.btnAddTarget.Location = new System.Drawing.Point(570, 51);
+            this.btnAddTarget.Location = new System.Drawing.Point(570, 52);
             this.btnAddTarget.Name = "btnAddTarget";
             this.btnAddTarget.Size = new System.Drawing.Size(33, 23);
             this.btnAddTarget.TabIndex = 8;
@@ -508,32 +511,30 @@
             // 
             this.btnAddSource.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnAddSource.Image = global::DatabaseMigration.Properties.Resources.Add;
-            this.btnAddSource.Location = new System.Drawing.Point(570, 25);
+            this.btnAddSource.Location = new System.Drawing.Point(570, 26);
             this.btnAddSource.Name = "btnAddSource";
             this.btnAddSource.Size = new System.Drawing.Size(33, 23);
             this.btnAddSource.TabIndex = 7;
             this.btnAddSource.UseVisualStyleBackColor = true;
             this.btnAddSource.Click += new System.EventHandler(this.btnAddSource_Click);
             // 
-            // chkBulkCopy
+            // toolStripMenuItem1
             // 
-            this.chkBulkCopy.AutoSize = true;
-            this.chkBulkCopy.Location = new System.Drawing.Point(9, 231);
-            this.chkBulkCopy.Name = "chkBulkCopy";
-            this.chkBulkCopy.Size = new System.Drawing.Size(186, 16);
-            this.chkBulkCopy.TabIndex = 15;
-            this.chkBulkCopy.Text = "Use BulkCopy to insert data";
-            this.chkBulkCopy.UseVisualStyleBackColor = true;
+            this.toolStripMenuItem1.BackColor = System.Drawing.SystemColors.MenuBar;
+            this.toolStripMenuItem1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
+            this.toolStripMenuItem1.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.settingToolStripMenuItem});
+            this.toolStripMenuItem1.Image = global::DatabaseMigration.Properties.Resources.Config;
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(74, 21);
+            this.toolStripMenuItem1.Text = "Config";
             // 
-            // chkAsync
+            // settingToolStripMenuItem
             // 
-            this.chkAsync.AutoSize = true;
-            this.chkAsync.Location = new System.Drawing.Point(9, 260);
-            this.chkAsync.Name = "chkAsync";
-            this.chkAsync.Size = new System.Drawing.Size(180, 16);
-            this.chkAsync.TabIndex = 16;
-            this.chkAsync.Text = "Use async to transfer data";
-            this.chkAsync.UseVisualStyleBackColor = true;
+            this.settingToolStripMenuItem.Name = "settingToolStripMenuItem";
+            this.settingToolStripMenuItem.Size = new System.Drawing.Size(122, 22);
+            this.settingToolStripMenuItem.Text = "Settings";
+            this.settingToolStripMenuItem.Click += new System.EventHandler(this.settingToolStripMenuItem_Click);
             // 
             // frmMain
             // 
@@ -560,6 +561,7 @@
             this.Controls.Add(this.cboTargetDB);
             this.Controls.Add(this.cboSourceDB);
             this.Controls.Add(this.menuStrip1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "frmMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
