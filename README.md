@@ -111,4 +111,4 @@ class Program
     
 ```
 ## UI
-![UI Screenshort](https://github.com/victor-wiki/StaticResources/blob/master/StaticResources/images/projs/DatabaseMigration/screenshot.png?raw=true)
+![UI Screenshot](https://github.com/victor-wiki/StaticResources/blob/master/StaticResources/images/projs/DatabaseMigration/screenshot.png?raw=true)
