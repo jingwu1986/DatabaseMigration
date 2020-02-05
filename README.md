@@ -5,7 +5,7 @@ It supports to generate primary key, foreign key, index, identity, default value
 ## UI
 ![UI Screenshot](https://github.com/victor-wiki/StaticResources/blob/master/StaticResources/images/projs/DatabaseMigration/screenshot.png?raw=true)
 
-## Usage
+## Test code
 
 ```
 class Program
