@@ -105,7 +105,7 @@
             // settingToolStripMenuItem
             // 
             this.settingToolStripMenuItem.Name = "settingToolStripMenuItem";
-            this.settingToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.settingToolStripMenuItem.Size = new System.Drawing.Size(122, 22);
             this.settingToolStripMenuItem.Text = "Settings";
             this.settingToolStripMenuItem.Click += new System.EventHandler(this.settingToolStripMenuItem_Click);
             // 
@@ -141,7 +141,7 @@
             this.txtMessage.Name = "txtMessage";
             this.txtMessage.ReadOnly = true;
             this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.txtMessage.Size = new System.Drawing.Size(725, 73);
+            this.txtMessage.Size = new System.Drawing.Size(725, 74);
             this.txtMessage.TabIndex = 0;
             this.txtMessage.Text = "";
             // 
@@ -413,6 +413,8 @@
             // chkAsync
             // 
             this.chkAsync.AutoSize = true;
+            this.chkAsync.Checked = true;
+            this.chkAsync.CheckState = System.Windows.Forms.CheckState.Checked;
             this.chkAsync.Location = new System.Drawing.Point(9, 260);
             this.chkAsync.Name = "chkAsync";
             this.chkAsync.Size = new System.Drawing.Size(180, 16);
