@@ -12,8 +12,8 @@ namespace DatabaseMigration.Core
 {
     public abstract class DbInterpreter
     {
-        #region Fields
-        public const string UnicodeInsertChar = "N";
+        #region Field & Property
+        public virtual string UnicodeInsertChar { get; } = "N";
         public const string RowNumberColumnName = "ROWNUMBER";
         public abstract string CommandParameterChar { get; }
         public abstract char QuotationLeftChar { get; }
@@ -143,7 +143,10 @@ namespace DatabaseMigration.Core
                     var cmdParams = this.BuildCommandParameters(paramaters);
                     if (cmdParams != null)
                     {
-                        dbCommander.DbCommand.Parameters.AddRange(cmdParams.ToArray());
+                        foreach(var parameter in cmdParams)
+                        {
+                            dbCommander.DbCommand.Parameters.Add(parameter);
+                        }                       
                     }
                 }
 
@@ -487,7 +490,7 @@ namespace DatabaseMigration.Core
         {
             StringBuilder sb = new StringBuilder();
 
-            if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
+            if (Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
             {
                 this.AppendScriptsToFile("", GenerateScriptMode.Data, true);
             }

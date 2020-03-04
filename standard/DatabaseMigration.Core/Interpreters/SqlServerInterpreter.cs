@@ -11,7 +11,7 @@ namespace DatabaseMigration.Core
 {
     public class SqlServerInterpreter : DbInterpreter
     {
-        #region Property
+        #region Field & Property
         public override string CommandParameterChar { get { return "@"; } }
         public override char QuotationLeftChar { get { return '['; } }
         public override char QuotationRightChar { get { return ']'; } }
@@ -208,7 +208,24 @@ namespace DatabaseMigration.Core
                 sql += $" WHERE T.name in ({ strTableNames })";
             }
 
-            return base.GetTableColumns(dbConnector, sql);
+            List<TableColumn> columns = base.GetTableColumns(dbConnector, sql);
+
+            if(!this.Option.IsSameDbType)
+            {
+                List<UserDefinedType> types = this.GetUserDefinedTypes();
+
+                foreach (TableColumn column in columns)
+                {
+                    UserDefinedType utype = types.FirstOrDefault(item => item.Name == column.DataType);
+                    if (utype != null)
+                    {
+                        column.DataType = utype.Type;
+                        column.MaxLength = utype.MaxLength;
+                    }
+                }
+            }          
+
+            return columns;
         }
         #endregion
 
@@ -494,10 +511,10 @@ REFERENCES {GetQuotedString(table.Owner)}.{GetQuotedString(tableForeignKey.Refer
                 sb.AppendLine("GO");
 
                 this.FeedbackInfo(OperationState.End, "view", view.Name);
-            } 
+            }
             #endregion
 
-            if (Option.ScriptOutputMode == GenerateScriptOutputMode.WriteToFile)
+            if (Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
             {
                 this.AppendScriptsToFile(sb.ToString(), GenerateScriptMode.Schema, true);
             }

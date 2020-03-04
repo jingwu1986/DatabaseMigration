@@ -11,7 +11,7 @@ namespace DatabaseMigration.Core
 {
     public class OracleInterpreter : DbInterpreter
     {
-        #region Property
+        #region Field & Property
         public const string SEMICOLON_FUNC = "CHR(59)";
         public const string CONNECT_CHAR = "||";
         public override string CommandParameterChar { get { return ":"; } }
@@ -395,6 +395,11 @@ REFERENCES { GetQuotedString(tableForeignKey.ReferencedTableName)}({referenceCol
                 this.FeedbackInfo(OperationState.End, "view", view.Name);
             }
             #endregion
+
+            if (Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+            {
+                this.AppendScriptsToFile(sb.ToString(), GenerateScriptMode.Schema, true);
+            }
 
             return sb.ToString();
         }

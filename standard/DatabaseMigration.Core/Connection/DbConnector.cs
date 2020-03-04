@@ -1,4 +1,5 @@
-﻿using Oracle.ManagedDataAccess.Client;
+﻿using MySql.Data.MySqlClient;
+using Oracle.ManagedDataAccess.Client;
 using System.Data.Common;
 using Westwind.Utilities;
 
@@ -25,9 +26,14 @@ namespace DatabaseMigration.Core
         {
             DbProviderFactory factory = null;
 
-            if (this._dbProvider.ProviderName.ToLower().Contains("oracle"))
+            string lowerProviderName = this._dbProvider.ProviderName.ToLower();
+            if (lowerProviderName.Contains("oracle"))
             {
                 factory = new OracleClientFactory();                
+            }
+            else if(lowerProviderName.Contains("mysql"))
+            {
+                factory = new MySqlClientFactory();
             }
             else
             {

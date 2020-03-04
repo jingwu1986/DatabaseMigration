@@ -16,7 +16,9 @@ namespace DatabaseMigration.Core
 {
     public class MySqlInterpreter : DbInterpreter
     {
-        #region Property
+        #region Field & Property
+        public override string UnicodeInsertChar => "";
+
         public override string CommandParameterChar { get { return "@"; } }
         public override char QuotationLeftChar { get { return '`'; } }
         public override char QuotationRightChar { get { return '`'; } }
@@ -41,8 +43,10 @@ namespace DatabaseMigration.Core
         protected override IEnumerable<DbParameter> BuildCommandParameters(Dictionary<string, object> paramaters)
         {
             foreach (KeyValuePair<string, object> kp in paramaters)
-            {
-                yield return new MySqlParameter(kp.Key, kp.Value);
+            {               
+                MySqlParameter parameter = new MySqlParameter(kp.Key, kp.Value);              
+
+                yield return parameter;
             }
         }
 
@@ -120,7 +124,7 @@ namespace DatabaseMigration.Core
             return this.InternalLoader(loader, dataTable, true);
         }
 
-        private async Task<int> InternalLoader(MySqlBulkLoader loader, DataTable dataTable, bool async=false)
+        private async Task<int> InternalLoader(MySqlBulkLoader loader, DataTable dataTable, bool async = false)
         {
             if (loader == null)
             {
@@ -174,7 +178,7 @@ namespace DatabaseMigration.Core
                     }
                 }
 
-                return async? await loader.LoadAsync(): loader.Load();
+                return async ? await loader.LoadAsync() : loader.Load();
             }
             catch (Exception e)
             {
@@ -209,19 +213,19 @@ namespace DatabaseMigration.Core
                 EscapeCharacter = '"',
                 FieldTerminator = ",",
                 ConflictOption = MySqlBulkLoaderConflictOption.Ignore,
-                TableName = this.GetQuotedString(destinationTableName)               
+                TableName = this.GetQuotedString(destinationTableName)
             };
 
-            if(string.IsNullOrEmpty(this.loaderPath))
+            if (string.IsNullOrEmpty(this.loaderPath))
             {
                 string path = conn.Query<string>(@"select @@global.secure_file_priv;").FirstOrDefault() ?? "";
 
-                if(Directory.Exists(path))
+                if (Directory.Exists(path))
                 {
                     this.loaderPath = path;
                     loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
-                }               
-            }                
+                }
+            }
 
             if (bulkCopyTimeout.HasValue)
             {
@@ -585,11 +589,16 @@ DEFAULT CHARSET={DbCharset};");
 
                 sb.AppendLine();
 
-                sb.Append(view.Definition.TrimEnd(';')+";");
+                sb.Append(view.Definition.TrimEnd(';') + ";");
 
                 this.FeedbackInfo(OperationState.End, "view", view.Name);
             }
             #endregion
+
+            if (Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+            {
+                this.AppendScriptsToFile(sb.ToString(), GenerateScriptMode.Schema, true);
+            }
 
             return sb.ToString();
         }

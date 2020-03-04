@@ -29,7 +29,7 @@
 </mapping>
 <mapping>
   <source type="tinyint" />
-  <target type="tinyint" />
+  <target type="smallint" />
 </mapping>
 <mapping>
   <source type="smallint" />
