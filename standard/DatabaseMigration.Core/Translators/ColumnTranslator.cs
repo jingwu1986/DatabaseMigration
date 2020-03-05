@@ -119,7 +119,7 @@ namespace DatabaseMigration.Core
                 if (!string.IsNullOrEmpty(column.DefaultValue))
                 {
                     string defaultValue = GetTrimedDefaultValue(column.DefaultValue);
-                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function.Split(',').Any(m=> m.ToLower() == defaultValue.ToLower())));
+                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function.Split(',').Any(m=> m.Trim().ToLower() == defaultValue.Trim().ToLower())));
                     if (funcMappings != null)
                     {
                         defaultValue = funcMappings.FirstOrDefault(item => item.DbType == targetDbType.ToString())?.Function.Split(',')?.FirstOrDefault();
