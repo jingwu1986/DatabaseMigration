@@ -141,7 +141,7 @@
             this.txtMessage.Name = "txtMessage";
             this.txtMessage.ReadOnly = true;
             this.txtMessage.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
-            this.txtMessage.Size = new System.Drawing.Size(725, 74);
+            this.txtMessage.Size = new System.Drawing.Size(725, 75);
             this.txtMessage.TabIndex = 0;
             this.txtMessage.Text = "";
             // 
@@ -415,7 +415,7 @@
             this.chkAsync.AutoSize = true;
             this.chkAsync.Checked = true;
             this.chkAsync.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkAsync.Location = new System.Drawing.Point(9, 260);
+            this.chkAsync.Location = new System.Drawing.Point(7, 257);
             this.chkAsync.Name = "chkAsync";
             this.chkAsync.Size = new System.Drawing.Size(180, 16);
             this.chkAsync.TabIndex = 16;
@@ -425,7 +425,7 @@
             // chkBulkCopy
             // 
             this.chkBulkCopy.AutoSize = true;
-            this.chkBulkCopy.Location = new System.Drawing.Point(9, 231);
+            this.chkBulkCopy.Location = new System.Drawing.Point(7, 228);
             this.chkBulkCopy.Name = "chkBulkCopy";
             this.chkBulkCopy.Size = new System.Drawing.Size(186, 16);
             this.chkBulkCopy.TabIndex = 15;
@@ -435,7 +435,7 @@
             // chkGenerateIdentity
             // 
             this.chkGenerateIdentity.AutoSize = true;
-            this.chkGenerateIdentity.Location = new System.Drawing.Point(9, 204);
+            this.chkGenerateIdentity.Location = new System.Drawing.Point(7, 201);
             this.chkGenerateIdentity.Name = "chkGenerateIdentity";
             this.chkGenerateIdentity.Size = new System.Drawing.Size(126, 16);
             this.chkGenerateIdentity.TabIndex = 14;
@@ -445,7 +445,7 @@
             // chkPickup
             // 
             this.chkPickup.AutoSize = true;
-            this.chkPickup.Location = new System.Drawing.Point(9, 176);
+            this.chkPickup.Location = new System.Drawing.Point(7, 173);
             this.chkPickup.Name = "chkPickup";
             this.chkPickup.Size = new System.Drawing.Size(294, 16);
             this.chkPickup.TabIndex = 13;
@@ -478,7 +478,7 @@
             // 
             // txtTargetDbOwner
             // 
-            this.txtTargetDbOwner.Location = new System.Drawing.Point(150, 52);
+            this.txtTargetDbOwner.Location = new System.Drawing.Point(150, 49);
             this.txtTargetDbOwner.Name = "txtTargetDbOwner";
             this.txtTargetDbOwner.Size = new System.Drawing.Size(130, 21);
             this.txtTargetDbOwner.TabIndex = 10;
@@ -486,7 +486,7 @@
             // lblTargetDbOwner
             // 
             this.lblTargetDbOwner.AutoSize = true;
-            this.lblTargetDbOwner.Location = new System.Drawing.Point(7, 55);
+            this.lblTargetDbOwner.Location = new System.Drawing.Point(6, 52);
             this.lblTargetDbOwner.Name = "lblTargetDbOwner";
             this.lblTargetDbOwner.Size = new System.Drawing.Size(137, 12);
             this.lblTargetDbOwner.TabIndex = 9;
@@ -495,7 +495,7 @@
             // chkGenerateSourceScripts
             // 
             this.chkGenerateSourceScripts.AutoSize = true;
-            this.chkGenerateSourceScripts.Location = new System.Drawing.Point(9, 148);
+            this.chkGenerateSourceScripts.Location = new System.Drawing.Point(7, 145);
             this.chkGenerateSourceScripts.Name = "chkGenerateSourceScripts";
             this.chkGenerateSourceScripts.Size = new System.Drawing.Size(282, 16);
             this.chkGenerateSourceScripts.TabIndex = 8;
@@ -507,7 +507,7 @@
             this.chkExecuteOnTarget.AutoSize = true;
             this.chkExecuteOnTarget.Checked = true;
             this.chkExecuteOnTarget.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkExecuteOnTarget.Location = new System.Drawing.Point(9, 117);
+            this.chkExecuteOnTarget.Location = new System.Drawing.Point(7, 114);
             this.chkExecuteOnTarget.Name = "chkExecuteOnTarget";
             this.chkExecuteOnTarget.Size = new System.Drawing.Size(228, 16);
             this.chkExecuteOnTarget.TabIndex = 7;
@@ -517,7 +517,7 @@
             // lblOutputFolder
             // 
             this.lblOutputFolder.AutoSize = true;
-            this.lblOutputFolder.Location = new System.Drawing.Point(7, 287);
+            this.lblOutputFolder.Location = new System.Drawing.Point(7, 284);
             this.lblOutputFolder.Name = "lblOutputFolder";
             this.lblOutputFolder.Size = new System.Drawing.Size(89, 12);
             this.lblOutputFolder.TabIndex = 6;
@@ -525,7 +525,7 @@
             // 
             // btnOutputFolder
             // 
-            this.btnOutputFolder.Location = new System.Drawing.Point(286, 283);
+            this.btnOutputFolder.Location = new System.Drawing.Point(286, 280);
             this.btnOutputFolder.Name = "btnOutputFolder";
             this.btnOutputFolder.Size = new System.Drawing.Size(36, 23);
             this.btnOutputFolder.TabIndex = 4;
@@ -535,7 +535,7 @@
             // 
             // txtOutputFolder
             // 
-            this.txtOutputFolder.Location = new System.Drawing.Point(102, 284);
+            this.txtOutputFolder.Location = new System.Drawing.Point(102, 281);
             this.txtOutputFolder.Name = "txtOutputFolder";
             this.txtOutputFolder.Size = new System.Drawing.Size(178, 21);
             this.txtOutputFolder.TabIndex = 3;
@@ -552,7 +552,7 @@
             // chkOutputScripts
             // 
             this.chkOutputScripts.AutoSize = true;
-            this.chkOutputScripts.Location = new System.Drawing.Point(9, 86);
+            this.chkOutputScripts.Location = new System.Drawing.Point(7, 83);
             this.chkOutputScripts.Name = "chkOutputScripts";
             this.chkOutputScripts.Size = new System.Drawing.Size(108, 16);
             this.chkOutputScripts.TabIndex = 0;

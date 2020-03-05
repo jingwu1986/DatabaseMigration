@@ -410,6 +410,7 @@ namespace DatabaseMigration
                     {
                         option.ScriptOutputMode = option.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
                     }
+
                     if (this.chkOutputScripts.Checked)
                     {
                         option.ScriptOutputMode = option.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
@@ -465,7 +466,7 @@ namespace DatabaseMigration
             DatabaseType targetDbType = this.GetDatabaseType(this.cboTargetDB.Text);
 
             int dataBatchSize = SettingManager.Setting.DataBatchSize;
-            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.None, DataBatchSize = dataBatchSize };
+            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.None, DataBatchSize = dataBatchSize, IsSameDbType = sourceDbType == targetDbType };
             GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
 
             this.SetGenerateScriptOption(sourceScriptOption, targetScriptOption);
@@ -767,7 +768,7 @@ namespace DatabaseMigration
 
         private void RemoveProfile(bool isSource)
         {
-            DialogResult dialogResult = MessageBox.Show("Area you sure to delete the profile?", "Confirm", MessageBoxButtons.YesNo);
+            DialogResult dialogResult = MessageBox.Show("Are you sure to delete the profile?", "Confirm", MessageBoxButtons.YesNo);
 
             if (dialogResult == DialogResult.Yes)
             {
@@ -812,6 +813,20 @@ namespace DatabaseMigration
             {
                 File.WriteAllLines(this.saveFileDialog1.FileName, this.txtMessage.Text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
                 this.saveFileDialog1.Reset();
+            }
+        }
+
+        private void btnOutputFolder_Click(object sender, EventArgs e)
+        {
+            if (this.dlgOutputFolder == null)
+            {
+                this.dlgOutputFolder = new FolderBrowserDialog();
+            }
+
+            DialogResult result = this.dlgOutputFolder.ShowDialog();
+            if (result == DialogResult.OK)
+            {
+                this.txtOutputFolder.Text = this.dlgOutputFolder.SelectedPath;
             }
         }
     }
