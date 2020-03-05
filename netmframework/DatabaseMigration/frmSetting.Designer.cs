@@ -42,6 +42,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.txtMySqlCharset = new System.Windows.Forms.TextBox();
             this.lblMySqlCharset = new System.Windows.Forms.Label();
+            this.chkEnableLog = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.numCommandTimeout)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDataBatchSize)).BeginInit();
             this.tabControl1.SuspendLayout();
@@ -159,6 +160,7 @@
             // tabGeneral
             // 
             this.tabGeneral.BackColor = System.Drawing.SystemColors.Control;
+            this.tabGeneral.Controls.Add(this.chkEnableLog);
             this.tabGeneral.Controls.Add(this.label2);
             this.tabGeneral.Controls.Add(this.numDataBatchSize);
             this.tabGeneral.Controls.Add(this.lblCommandTimeout);
@@ -217,6 +219,16 @@
             this.lblMySqlCharset.TabIndex = 0;
             this.lblMySqlCharset.Text = "Charset:";
             // 
+            // chkEnableLog
+            // 
+            this.chkEnableLog.AutoSize = true;
+            this.chkEnableLog.Location = new System.Drawing.Point(8, 72);
+            this.chkEnableLog.Name = "chkEnableLog";
+            this.chkEnableLog.Size = new System.Drawing.Size(84, 16);
+            this.chkEnableLog.TabIndex = 15;
+            this.chkEnableLog.Text = "Enable log";
+            this.chkEnableLog.UseVisualStyleBackColor = true;
+            // 
             // frmSetting
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -257,5 +269,6 @@
         private System.Windows.Forms.Label lblMySqlCharset;
         private System.Windows.Forms.TextBox txtMySqlCharsetCollation;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.CheckBox chkEnableLog;
     }
 }

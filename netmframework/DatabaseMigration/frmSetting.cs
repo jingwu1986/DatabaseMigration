@@ -26,6 +26,7 @@ namespace DatabaseMigration
             this.numDataBatchSize.Value = setting.DataBatchSize;
             this.txtMySqlCharset.Text = setting.MySqlCharset;
             this.txtMySqlCharsetCollation.Text = setting.MySqlCharsetCollation;
+            this.chkEnableLog.Checked = setting.EnableLog;
         }
 
         private void btnConfirm_Click(object sender, EventArgs e)
@@ -35,6 +36,7 @@ namespace DatabaseMigration
             setting.DataBatchSize = (int)this.numDataBatchSize.Value;
             setting.MySqlCharset = this.txtMySqlCharset.Text.Trim();
             setting.MySqlCharsetCollation = this.txtMySqlCharsetCollation.Text.Trim();
+            setting.EnableLog = this.chkEnableLog.Checked;
 
             SettingManager.SaveConfig(setting);
         }

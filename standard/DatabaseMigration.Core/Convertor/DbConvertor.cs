@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DatabaseMigration.Profile;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -9,15 +10,17 @@ namespace DatabaseMigration.Core
 {
     public delegate void FeedbackHandle(FeedbackInfo info);
 
-    public class DbConvertor : IObserver<FeedbackInfo>
+    public class DbConvertor
     {
+        private IObserver<FeedbackInfo> observer;
+        private bool hasError = false;
+
         public DbConvetorInfo Source { get; set; }
         public DbConvetorInfo Target { get; set; }
 
         public DbConvertorOption Option { get; set; } = new DbConvertorOption();
 
         public event FeedbackHandle OnFeedback;
-
 
         public DbConvertor(DbConvetorInfo source, DbConvetorInfo target)
         {
@@ -35,17 +38,17 @@ namespace DatabaseMigration.Core
             }
         }
 
-        public void Convert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
+        public void Subscribe(IObserver<FeedbackInfo> observer)
         {
-            this.InternalConvert(schemaInfo, getAllIfNotSpecified, false).Wait();
+            this.observer = observer;
         }
 
-        public Task ConvertAsync(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
+        public Task Convert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
         {
-            return this.InternalConvert(schemaInfo, getAllIfNotSpecified, true);
+            return this.InternalConvert(schemaInfo, getAllIfNotSpecified);
         }
 
-        private async Task InternalConvert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true, bool async = false)
+        private async Task InternalConvert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
         {
             DbInterpreter sourceInterpreter = this.Source.DbInterpreter;
 
@@ -59,13 +62,13 @@ namespace DatabaseMigration.Core
             {
                 tableNames = sourceInterpreter.GetTables().Select(item => item.Name).ToArray();
                 userDefinedTypeNames = sourceInterpreter.GetUserDefinedTypes().Select(item => item.Name).ToArray();
-                viewNames = sourceInterpreter.GetViews().Select(item=>item.Name).ToArray();
+                viewNames = sourceInterpreter.GetViews().Select(item => item.Name).ToArray();
             }
             else
             {
                 tableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
                 userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
-                viewNames = schemaInfo.Views.Select(item=>item.Name).ToArray();
+                viewNames = schemaInfo.Views.Select(item => item.Name).ToArray();
             }
 
             SelectionInfo selectionInfo = new SelectionInfo()
@@ -75,8 +78,7 @@ namespace DatabaseMigration.Core
                 ViewNames = viewNames
             };
 
-            SchemaInfo sourceSchemaInfo = async? await sourceInterpreter.GetSchemaInfoAsync(selectionInfo, getAllIfNotSpecified): 
-                            sourceInterpreter.GetSchemaInfo(selectionInfo, getAllIfNotSpecified);
+            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfo(selectionInfo, getAllIfNotSpecified);
 
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);
 
@@ -108,8 +110,8 @@ namespace DatabaseMigration.Core
 
             string script = "";
 
-            sourceInterpreter.Subscribe(this);
-            targetInterpreter.Subscribe(this);
+            sourceInterpreter.Subscribe(this.observer);
+            targetInterpreter.Subscribe(this.observer);
 
             if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Schema))
             {
@@ -117,41 +119,26 @@ namespace DatabaseMigration.Core
 
                 if (string.IsNullOrEmpty(script))
                 {
-                    throw new Exception($"The script to create schema is null.");
+                    this.Feedback(targetInterpreter, $"The script to create schema is null.", FeedbackInfoType.Error);
+                    return;
                 }
 
                 targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
+
                 if (!this.Option.SplitScriptsToExecute)
                 {
                     if (targetInterpreter is SqlServerInterpreter)
                     {
                         string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-                        if (async)
+                        scriptItems.ToList().ForEach(async item =>
                         {
-                            scriptItems.ToList().ForEach(async item =>
-                            {
-                                await targetInterpreter.ExecuteNonQueryAsync(item);
-                            });
-                        }
-                        else
-                        {
-                            scriptItems.ToList().ForEach(item =>
-                            {
-                                targetInterpreter.ExecuteNonQuery(item);
-                            });
-                        }
+                            await targetInterpreter.ExecuteNonQueryAsync(item);
+                        });
                     }
                     else
                     {
-                        if (async)
-                        {
-                            await targetInterpreter.ExecuteNonQueryAsync(script);
-                        }
-                        else
-                        {
-                            targetInterpreter.ExecuteNonQuery(script);
-                        }
+                        await targetInterpreter.ExecuteNonQueryAsync(script);
                     }
                 }
                 else
@@ -199,112 +186,103 @@ namespace DatabaseMigration.Core
                         }
                     });
 
-                    sourceInterpreter.OnDataRead += async (table, columns, data, dbDataReader) =>
+                    if (this.Option.ExecuteScriptOnTargetServer)
                     {
-                        try
+                        sourceInterpreter.OnDataRead += async (table, columns, data, dbDataReader) =>
                         {
-                            StringBuilder sb = new StringBuilder();
-
-                            (Table Table, List<TableColumn> Columns) targetTableAndColumns = this.GetTargetTableColumns(targetSchemaInfo, this.Target.DbOwner, table, columns);
-
-                            Dictionary<string, object> paramters = targetInterpreter.AppendDataScripts(this.Target.DbInterpreter.Option, sb, targetTableAndColumns.Table, targetTableAndColumns.Columns, new Dictionary<long, List<Dictionary<string, object>>>() { { 1, data } });
-
-                            try
+                            if (!this.hasError)
                             {
-                                script = sb.ToString();
-                                sb.Clear();
-                            }
-                            catch (OutOfMemoryException e)
-                            {
-                                sb.Clear();
-                            }
-
-                            if (!this.Option.SplitScriptsToExecute)
-                            {
-                                if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                try
                                 {
-                                    if (async)
-                                    {
-                                        await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
-                                    }
-                                    else
-                                    {
-                                        targetInterpreter.BulkCopy(dbConnection, dbDataReader, table.Name);
-                                    }
-                                }
-                                else
-                                {
-                                    if (async)
-                                    {
-                                        await targetInterpreter.ExecuteNonQueryAsync(dbConnection, script, paramters, false);
-                                    }
-                                    else
-                                    {
-                                        targetInterpreter.ExecuteNonQuery(dbConnection, script, paramters, false);
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+                                    StringBuilder sb = new StringBuilder();
 
-                                foreach (string sql in sqls)
-                                {
-                                    if (!string.IsNullOrEmpty(sql.Trim()))
+                                    (Table Table, List<TableColumn> Columns) targetTableAndColumns = this.GetTargetTableColumns(targetSchemaInfo, this.Target.DbOwner, table, columns);
+
+                                    if (targetTableAndColumns.Table == null || targetTableAndColumns.Columns == null)
+                                    {
+                                        return;
+                                    }
+
+                                    Dictionary<string, object> paramters = targetInterpreter.AppendDataScripts(this.Target.DbInterpreter.Option, sb, targetTableAndColumns.Table, targetTableAndColumns.Columns, new Dictionary<long, List<Dictionary<string, object>>>() { { 1, data } });
+
+                                    try
+                                    {
+                                        script = sb.ToString();
+                                        sb.Clear();
+                                    }
+                                    catch (OutOfMemoryException e)
+                                    {
+                                        sb.Clear();
+                                    }
+
+                                    if (!this.Option.SplitScriptsToExecute)
                                     {
                                         if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                         {
-                                            if (async)
-                                            {
-                                                await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
-                                            }
-                                            else
-                                            {
-                                                targetInterpreter.BulkCopy(dbConnection, dbDataReader, table.Name);
-                                            }
+                                            await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
                                         }
                                         else
                                         {
-                                            if (async)
-                                            {
-                                                await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
-                                            }
-                                            else
-                                            {
-                                                targetInterpreter.ExecuteNonQuery(dbConnection, sql, paramters, false);
-                                            }
-                                        }                                                                            
+                                            await targetInterpreter.ExecuteNonQueryAsync(dbConnection, script, paramters, false);
+                                        }
                                     }
+                                    else
+                                    {
+                                        string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+
+                                        foreach (string sql in sqls)
+                                        {
+                                            if (!string.IsNullOrEmpty(sql.Trim()))
+                                            {
+                                                if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                                {
+                                                    await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                                }
+                                                else
+                                                {
+                                                    await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    targetInterpreter.FeedbackInfo($"End write data to table {table.Name}, handled rows count:{data.Count}.");
+                                }
+                                catch (Exception ex)
+                                {
+                                    this.hasError = true;
+
+                                    ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
+                                    ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
+
+                                    TableDataTransferException tableDataTransferException = new TableDataTransferException(ex)
+                                    {
+                                        SourceServer = sourceConnectionInfo.Server,
+                                        SourceDatabase = sourceConnectionInfo.Database,
+                                        SourceTableName = table.Name,
+                                        TargetServer = targetConnectionInfo.Server,
+                                        TargetDatabase = targetConnectionInfo.Database,
+                                        TargetTableName = table.Name
+                                    };
+
+                                    string errMsg = ExceptionHelper.GetExceptionDetails(tableDataTransferException);
+                                    this.Feedback(this, errMsg, FeedbackInfoType.Error);
+
+                                    DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
+                                    {
+                                        SourceServer = sourceConnectionInfo.Server,
+                                        SourceDatabase = sourceConnectionInfo.Database,
+                                        SourceTableName = table.Name,
+                                        TargetServer = targetConnectionInfo.Server,
+                                        TargetDatabase = targetConnectionInfo.Database,
+                                        TargetTableName = table.Name
+                                    });
                                 }
                             }
-
-                            targetInterpreter.FeedbackInfo($"End write data to table {table.Name}, handled rows count:{data.Count}.");
-                        }
-                        catch (Exception ex)
-                        {
-                            ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
-                            ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
-
-                            throw new TableDataTransferException(ex)
-                            {
-                                SourceServer = sourceConnectionInfo.Server,
-                                SourceDatabase = sourceConnectionInfo.Database,
-                                SourceTableName = table.Name,
-                                TargetServer = targetConnectionInfo.Server,
-                                TargetDatabase = targetConnectionInfo.Database,
-                                TargetTableName = table.Name
-                            };
-                        }
-                    };
-
-                    if (async)
-                    {
-                        await sourceInterpreter.GenerateDataScriptsAsync(sourceSchemaInfo);
+                        };
                     }
-                    else
-                    {
-                        sourceInterpreter.GenerateDataScripts(sourceSchemaInfo);
-                    }
+
+                    await sourceInterpreter.GenerateDataScriptsAsync(sourceSchemaInfo);
 
                     identityTableColumns.ForEach(item =>
                     {
@@ -322,7 +300,8 @@ namespace DatabaseMigration.Core
             Table targetTable = targetSchemaInfo.Tables.FirstOrDefault(item => (item.Owner == targetOwner || string.IsNullOrEmpty(targetOwner)) && item.Name == sourceTable.Name);
             if (targetTable == null)
             {
-                throw new Exception($"Source table {sourceTable.Name} cannot get a target table.");
+                this.Feedback(this, $"Source table {sourceTable.Name} cannot get a target table.", FeedbackInfoType.Error);
+                return (null, null);
             }
 
             List<TableColumn> targetTableColumns = new List<TableColumn>();
@@ -331,31 +310,24 @@ namespace DatabaseMigration.Core
                 TableColumn targetTableColumn = targetSchemaInfo.Columns.FirstOrDefault(item => (item.Owner == targetOwner || string.IsNullOrEmpty(targetOwner)) && item.TableName == sourceColumn.TableName && item.ColumnName == sourceColumn.ColumnName);
                 if (targetTableColumn == null)
                 {
-                    throw new Exception($"Source column {sourceColumn.TableName} of table {sourceColumn.TableName} cannot get a target column.");
+                    this.Feedback(this, $"Source column {sourceColumn.TableName} of table {sourceColumn.TableName} cannot get a target column.", FeedbackInfoType.Error);
+                    return (null, null);
                 }
                 targetTableColumns.Add(targetTableColumn);
             }
             return (targetTable, targetTableColumns);
         }
 
-        #region IObserver<FeedbackInfo>
-        void IObserver<FeedbackInfo>.OnCompleted()
+        public void Feedback(object owner, string content, FeedbackInfoType infoType = FeedbackInfoType.Info, bool enableLog = true)
         {
+            FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = content, Owner = owner?.GetType()?.Name };
 
-        }
+            FeedbackHelper.Feedback(this.observer, info, enableLog);
 
-        void IObserver<FeedbackInfo>.OnError(Exception error)
-        {
-
-        }
-
-        void IObserver<FeedbackInfo>.OnNext(FeedbackInfo info)
-        {
             if (this.OnFeedback != null)
             {
                 this.OnFeedback(info);
             }
         }
-        #endregion
     }
 }

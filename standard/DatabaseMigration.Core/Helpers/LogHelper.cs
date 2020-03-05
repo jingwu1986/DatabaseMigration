@@ -6,9 +6,12 @@ namespace DatabaseMigration.Core
 {
     public class LogHelper
     {
-        public static void Log(string message)
+        public static bool EnableDebug { get; set; }
+        private static object obj = new object();
+
+        public static void LogInfo(string message)
         {
-            string logFolder = "log";// Path.Combine(PathHelper.GetAssemblyFolder(), "log");
+            string logFolder = "log";
             if(!Directory.Exists(logFolder))
             {
                 Directory.CreateDirectory(logFolder);
@@ -16,7 +19,17 @@ namespace DatabaseMigration.Core
 
             string filePath = Path.Combine(logFolder, DateTime.Today.ToString("yyyyMMdd") + ".txt");
 
-            File.AppendAllText(filePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}:{message}{Environment.NewLine}", Encoding.UTF8);
-        }
+            string content = $"{DateTime.Now.ToString("yyyyMMdd HH.mm.ss")}:{message}";          
+
+            lock (obj)
+            {
+                File.AppendAllLines(filePath, new string[] { content });
+            }
+
+            if (EnableDebug)
+            {
+                Console.WriteLine(content);
+            }
+        }      
     }
 }

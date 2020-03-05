@@ -320,7 +320,7 @@ namespace DatabaseMigration.Core
         {
             string sql = $@"SELECT v.name AS [Name], schema_name(v.schema_id) AS [Owner],m.definition as [Definition]
                         FROM sys.sql_modules m
-                        JOIN sys.views v ON V.object_id=m.object_id";
+                        JOIN sys.views v ON v.object_id=m.object_id";
 
             if (viewNames != null && viewNames.Any())
             {

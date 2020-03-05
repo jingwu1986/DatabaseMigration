@@ -117,20 +117,20 @@ namespace DatabaseMigration.Core
 
         public Task<int> ExecuteNonQueryAsync(string sql, Dictionary<string, object> paramaters = null)
         {
-            return this.InteralExecuteNonQuery(this.GetDbConnector().CreateConnection(), sql, paramaters, true);
+            return this.InternalExecuteNonQuery(this.GetDbConnector().CreateConnection(), sql, paramaters, true);
         }
 
         public int ExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
         {
-            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, false).Result;
+            return this.InternalExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, false).Result;
         }
 
         public Task<int> ExecuteNonQueryAsync(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true)
         {
-            return this.InteralExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, true);
+            return this.InternalExecuteNonQuery(dbConnection, sql, paramaters, disposeConnection, true);
         }
 
-        public async Task<int> InteralExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async = false)
+        public async Task<int> InternalExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async = false)
         {
 #if disposeConnection
             using (dbConnection)
@@ -170,7 +170,7 @@ namespace DatabaseMigration.Core
         {
             if (this.m_Observer != null)
             {
-                this.m_Observer.OnNext(new FeedbackInfo() { Owner = this.GetType().Name, InfoType = infoType, Message = message });
+                FeedbackHelper.Feedback(this.m_Observer, new FeedbackInfo() { Owner = this.GetType().Name, InfoType = infoType, Message = message });                
             }
         }
 
@@ -247,15 +247,15 @@ namespace DatabaseMigration.Core
         public abstract Task<List<Table>> GetTablesAsync(params string[] tableNames);
         protected List<Table> GetTables(DbConnector dbConnector, string sql)
         {
-            return this.InteralGetTables(dbConnector, sql, false).Result;
+            return this.InternalGetTables(dbConnector, sql, false).Result;
         }
 
         protected Task<List<Table>> GetTablesAsync(DbConnector dbConnector, string sql)
         {
-            return this.InteralGetTables(dbConnector, sql, true);
+            return this.InternalGetTables(dbConnector, sql, true);
         }
 
-        private async Task<List<Table>> InteralGetTables(DbConnector dbConnector, string sql, bool async = false)
+        private async Task<List<Table>> InternalGetTables(DbConnector dbConnector, string sql, bool async = false)
         {
             List<Table> tables = new List<Table>();
             using (DbConnection dbConnection = dbConnector.CreateConnection())
@@ -346,15 +346,15 @@ namespace DatabaseMigration.Core
         public abstract Task<List<View>> GetViewsAsync(params string[] viewNames);
         protected List<View> GetViews(DbConnector dbConnector, string sql)
         {
-            return this.InteralGetViews(dbConnector, sql, false).Result;
+            return this.InternalGetViews(dbConnector, sql, false).Result;
         }
 
         protected Task<List<View>> GetViewsAsync(DbConnector dbConnector, string sql)
         {
-            return this.InteralGetViews(dbConnector, sql, true);
+            return this.InternalGetViews(dbConnector, sql, true);
         }
 
-        private async Task<List<View>> InteralGetViews(DbConnector dbConnector, string sql, bool async = false)
+        private async Task<List<View>> InternalGetViews(DbConnector dbConnector, string sql, bool async = false)
         {
             List<View> views = new List<View>();
             using (DbConnection dbConnection = dbConnector.CreateConnection())
@@ -377,14 +377,9 @@ namespace DatabaseMigration.Core
         }
         #endregion      
 
-        #region Generate Scripts
+        #region Generate Scripts       
 
-        public virtual SchemaInfo GetSchemaInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
-        {
-            return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, false).Result;
-        }
-
-        public virtual Task<SchemaInfo> GetSchemaInfoAsync(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
+        public virtual Task<SchemaInfo> GetSchemaInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
         {
             return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, true);
         }
@@ -626,15 +621,15 @@ namespace DatabaseMigration.Core
 
         private Dictionary<long, List<Dictionary<string, object>>> GetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
         {
-            return this.InteralGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, false).Result;
+            return this.InternalGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, false).Result;
         }
 
         private Task<Dictionary<long, List<Dictionary<string, object>>>> GetPagedDataListAsync(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "")
         {
-            return this.InteralGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, true);
+            return this.InternalGetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize, whereClause, true);
         }
 
-        private async Task<Dictionary<long, List<Dictionary<string, object>>>> InteralGetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "", bool async = false)
+        private async Task<Dictionary<long, List<Dictionary<string, object>>>> InternalGetPagedDataList(DbConnection connection, Table table, List<TableColumn> columns, string primaryKeyColumns, long total, int pageSize, string whereClause = "", bool async = false)
         {
             string quotedTableName = this.GetQuotedObjectName(table);
             string columnNames = this.GetQuotedColumnNames(columns);
@@ -743,7 +738,10 @@ namespace DatabaseMigration.Core
                         }
                     }
 
-                    values = $"{this.GetBatchInsertItemBefore(tableName, rowCount == 1)}{values}{this.GetBatchInsertItemEnd(rowCount == kp.Value.Count)}";
+                    string beginChar = this.GetBatchInsertItemBefore(tableName, rowCount == 1);
+                    string endChar = this.GetBatchInsertItemEnd(rowCount == kp.Value.Count);
+
+                    values = $"{beginChar}{values}{endChar}";
 
                     if (option.RemoveEmoji)
                     {
@@ -757,7 +755,7 @@ namespace DatabaseMigration.Core
 
                     if (appendFile)
                     {
-                        sbFilePage.AppendLine(valuesWithoutParameter);
+                        sbFilePage.AppendLine($"{beginChar}{valuesWithoutParameter}{endChar}");
                     }
                 }
 

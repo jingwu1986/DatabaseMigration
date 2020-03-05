@@ -10,7 +10,7 @@ namespace DatabaseMigration.Core
     {
         public string BuildConntionString(ConnectionInfo connectionInfo)
         {
-            StringBuilder sb = new StringBuilder($"server={connectionInfo.Server};database={connectionInfo.Database};");
+            StringBuilder sb = new StringBuilder($"server={connectionInfo.Server};database={connectionInfo.Database};Charset=utf8;");
 
             if(connectionInfo.IntegratedSecurity)
             {

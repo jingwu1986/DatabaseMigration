@@ -273,7 +273,10 @@ namespace DatabaseMigration
                 catch (Exception ex)
                 {
                     this.tvSource.Nodes.Clear();
-                    MessageBox.Show("Error:" + ex.Message);
+
+                    string message = ExceptionHelper.GetExceptionDetails(ex);
+
+                    MessageBox.Show("Error:" + message);
                 }
 
                 this.btnConnect.Text = "Connect";
@@ -542,22 +545,9 @@ namespace DatabaseMigration
             }
             catch (Exception ex)
             {
-                string errMsg = ex.Message;
+                string errMsg = ExceptionHelper.GetExceptionDetails(ex);
 
-                if (ex.InnerException != null)
-                {
-                    string detailsMsg = ex.InnerException?.InnerException?.Message ?? ex.InnerException.Message;
-                    sbFeedback.AppendLine("Inner Exception:" + detailsMsg);
-                }
-                else
-                {
-                    sbFeedback.AppendLine("Error:" + ex.Message);
-                }
-
-                if (!string.IsNullOrEmpty(ex.StackTrace))
-                {
-                    sbFeedback.AppendLine(ex.StackTrace);
-                }
+                sbFeedback.Append(errMsg);
 
                 this.AppendErrorMessage(sbFeedback.ToString());
 
