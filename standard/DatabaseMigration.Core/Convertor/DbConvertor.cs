@@ -186,7 +186,7 @@ namespace DatabaseMigration.Core
                         }
                     });
 
-                    if (this.Option.ExecuteScriptOnTargetServer)
+                    if (this.Option.ExecuteScriptOnTargetServer || targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
                     {
                         sourceInterpreter.OnDataRead += async (table, columns, data, dbDataReader) =>
                         {
@@ -215,38 +215,41 @@ namespace DatabaseMigration.Core
                                         sb.Clear();
                                     }
 
-                                    if (!this.Option.SplitScriptsToExecute)
+                                    if(this.Option.ExecuteScriptOnTargetServer)
                                     {
-                                        if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                        if (!this.Option.SplitScriptsToExecute)
                                         {
-                                            await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                            if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                            {
+                                                await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                            }
+                                            else
+                                            {
+                                                await targetInterpreter.ExecuteNonQueryAsync(dbConnection, script, paramters, false);
+                                            }
                                         }
                                         else
                                         {
-                                            await targetInterpreter.ExecuteNonQueryAsync(dbConnection, script, paramters, false);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+                                            string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
 
-                                        foreach (string sql in sqls)
-                                        {
-                                            if (!string.IsNullOrEmpty(sql.Trim()))
+                                            foreach (string sql in sqls)
                                             {
-                                                if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                                if (!string.IsNullOrEmpty(sql.Trim()))
                                                 {
-                                                    await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
-                                                }
-                                                else
-                                                {
-                                                    await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                                    if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
+                                                    {
+                                                        await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                                    }
+                                                    else
+                                                    {
+                                                        await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
 
-                                    targetInterpreter.FeedbackInfo($"Table \"{table.Name}\":{data.Count} records transferred.");
+                                        targetInterpreter.FeedbackInfo($"Table \"{table.Name}\":{data.Count} records transferred.");
+                                    }                                   
                                 }
                                 catch (Exception ex)
                                 {

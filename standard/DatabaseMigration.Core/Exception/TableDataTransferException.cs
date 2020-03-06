@@ -31,7 +31,7 @@ namespace DatabaseMigration.Core
                $"TargetServer:{this.TargetServer}" + Environment.NewLine +
                $"TargetDatabase:{this.TargetDatabase}" + Environment.NewLine +
                $"TargetTableName:{this.TargetTableName}" + Environment.NewLine +
-               base.StackTrace;
+               BaseException?.StackTrace;
             }
         }
     }

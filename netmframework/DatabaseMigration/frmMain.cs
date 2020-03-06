@@ -410,7 +410,7 @@ namespace DatabaseMigration
             return true;
         }
 
-        private bool SetGenerateScriptOption(params GenerateScriptOption[] options)
+        private void SetGenerateScriptOption(params GenerateScriptOption[] options)
         {
             if (options != null)
             {
@@ -420,21 +420,9 @@ namespace DatabaseMigration
                     if (Directory.Exists(outputFolder))
                     {
                         option.ScriptOutputFolder = outputFolder;
-                    }
-
-                    if (this.chkGenerateSourceScripts.Checked)
-                    {
-                        option.ScriptOutputMode = option.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
-                    }
-
-                    if (this.chkOutputScripts.Checked)
-                    {
-                        option.ScriptOutputMode = option.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
-                    }
+                    }                    
                 }
-            }
-
-            return true;
+            }           
         }
 
         private GenerateScriptMode GetGenerateScriptMode()
@@ -486,6 +474,16 @@ namespace DatabaseMigration
             GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
 
             this.SetGenerateScriptOption(sourceScriptOption, targetScriptOption);
+
+            if (this.chkGenerateSourceScripts.Checked)
+            {
+                sourceScriptOption.ScriptOutputMode = sourceScriptOption.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
+            }
+
+            if (this.chkOutputScripts.Checked)
+            {
+                targetScriptOption.ScriptOutputMode = targetScriptOption.ScriptOutputMode | GenerateScriptOutputMode.WriteToFile;
+            }
 
             targetScriptOption.GenerateIdentity = this.chkGenerateIdentity.Checked;
 
