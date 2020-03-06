@@ -43,63 +43,38 @@ namespace DatabaseMigration.Core
         protected override IEnumerable<DbParameter> BuildCommandParameters(Dictionary<string, object> paramaters)
         {
             foreach (KeyValuePair<string, object> kp in paramaters)
-            {               
-                MySqlParameter parameter = new MySqlParameter(kp.Key, kp.Value);              
+            {
+                MySqlParameter parameter = new MySqlParameter(kp.Key, kp.Value);
 
                 yield return parameter;
             }
         }
 
-        public override async Task<int> BulkCopyAsync(
-            DbConnection connection,
-            DataTable dataTable,
-            string destinationTableName = null,
-            int? bulkCopyTimeout = null,
-            int? batchSize = null)
+        public override async Task<int> BulkCopyAsync(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null, int? batchSize = null)
         {
-            if (dataTable == null || dataTable.Rows.Count <= 0)
-            {
-                return 0;
-            }
-
-            var loader = GetMySqlBulkLoader(
-                connection,
-                dataTable,
-                destinationTableName,
-                bulkCopyTimeout);
-
-            if (loader == null)
-            {
-                return 0;
-            }
-
-            return await LoaderAsync(loader, dataTable);
+            return await this.InternalBulkCopy(connection, dataTable, destinationTableName, bulkCopyTimeout, batchSize, true);
         }
 
-        public override int BulkCopy(
-            DbConnection connection,
-            DataTable dataTable,
-            string destinationTableName = null,
-            int? bulkCopyTimeout = null,
-            int? batchSize = null)
+        public override int BulkCopy(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null, int? batchSize = null)
+        {
+            return this.InternalBulkCopy(connection, dataTable, destinationTableName, bulkCopyTimeout, batchSize, false).Result;
+        }
+
+        private async Task<int> InternalBulkCopy(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null, int? batchSize = null, bool async = false)
         {
             if (dataTable == null || dataTable.Rows.Count <= 0)
             {
                 return 0;
             }
 
-            var loader = GetMySqlBulkLoader(
-                connection,
-                dataTable,
-                destinationTableName,
-                bulkCopyTimeout);
+            var loader = this.GetMySqlBulkLoader(connection, dataTable, destinationTableName, bulkCopyTimeout);
 
             if (loader == null)
             {
                 return 0;
             }
 
-            return Loader(loader, dataTable);
+            return await this.LoaderAsync(loader, dataTable);
         }
 
         private class NullDateTimeConverter : DateTimeConverter
@@ -114,6 +89,7 @@ namespace DatabaseMigration.Core
                 return base.ConvertToString(value, row, memberMapData);
             }
         }
+
         private int Loader(MySqlBulkLoader loader, DataTable dataTable)
         {
             return this.InternalLoader(loader, dataTable, false).Result;
@@ -190,11 +166,7 @@ namespace DatabaseMigration.Core
             }
         }
 
-        private MySqlBulkLoader GetMySqlBulkLoader(
-            DbConnection connection,
-            DataTable dataTable,
-            string destinationTableName = null,
-            int? bulkCopyTimeout = null)
+        private MySqlBulkLoader GetMySqlBulkLoader(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null)
         {
             if (dataTable == null || dataTable.Rows.Count <= 0)
             {
@@ -213,7 +185,8 @@ namespace DatabaseMigration.Core
                 EscapeCharacter = '"',
                 FieldTerminator = ",",
                 ConflictOption = MySqlBulkLoaderConflictOption.Ignore,
-                TableName = this.GetQuotedString(destinationTableName)
+                TableName = this.GetQuotedString(destinationTableName),
+                CharacterSet="utf8"
             };
 
             if (string.IsNullOrEmpty(this.loaderPath))
@@ -225,6 +198,10 @@ namespace DatabaseMigration.Core
                     this.loaderPath = path;
                     loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
                 }
+            }
+            else
+            {
+                loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
             }
 
             if (bulkCopyTimeout.HasValue)
