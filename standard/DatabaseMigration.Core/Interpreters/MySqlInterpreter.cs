@@ -67,7 +67,7 @@ namespace DatabaseMigration.Core
                 return 0;
             }
 
-            var loader = this.GetMySqlBulkLoader(connection, dataTable, destinationTableName, bulkCopyTimeout);
+            var loader = this.GetBulkLoader(connection, dataTable, destinationTableName, bulkCopyTimeout);
 
             if (loader == null)
             {
@@ -90,17 +90,17 @@ namespace DatabaseMigration.Core
             }
         }
 
-        private int Loader(MySqlBulkLoader loader, DataTable dataTable)
+        private int BulkLoad(MySqlBulkLoader loader, DataTable dataTable)
         {
-            return this.InternalLoader(loader, dataTable, false).Result;
+            return this.InternalLoad(loader, dataTable, false).Result;
         }
 
         private Task<int> LoaderAsync(MySqlBulkLoader loader, DataTable dataTable)
         {
-            return this.InternalLoader(loader, dataTable, true);
+            return this.InternalLoad(loader, dataTable, true);
         }
 
-        private async Task<int> InternalLoader(MySqlBulkLoader loader, DataTable dataTable, bool async = false)
+        private async Task<int> InternalLoad(MySqlBulkLoader loader, DataTable dataTable, bool async = false)
         {
             if (loader == null)
             {
@@ -166,7 +166,7 @@ namespace DatabaseMigration.Core
             }
         }
 
-        private MySqlBulkLoader GetMySqlBulkLoader(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null)
+        private MySqlBulkLoader GetBulkLoader(DbConnection connection, DataTable dataTable, string destinationTableName = null, int? bulkCopyTimeout = null)
         {
             if (dataTable == null || dataTable.Rows.Count <= 0)
             {
@@ -189,19 +189,21 @@ namespace DatabaseMigration.Core
                 CharacterSet="utf8"
             };
 
+            string fileName = Path.GetFileName(Path.GetTempFileName());
+
             if (string.IsNullOrEmpty(this.loaderPath))
             {
                 string path = conn.Query<string>(@"select @@global.secure_file_priv;").FirstOrDefault() ?? "";
 
                 if (Directory.Exists(path))
                 {
-                    this.loaderPath = path;
-                    loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
+                    this.loaderPath = path;                   
                 }
             }
-            else
+
+            if(Directory.Exists(this.loaderPath))           
             {
-                loader.FileName = Path.Combine(this.loaderPath, Path.GetFileName(Path.GetTempFileName()));
+                loader.FileName = Path.Combine(this.loaderPath, fileName);
             }
 
             if (bulkCopyTimeout.HasValue)
