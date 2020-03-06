@@ -128,11 +128,11 @@ $@"<?xml version=""1.0"" encoding=""utf-8""?>
                 {
                     SourceServer= sourceConnectionInfo.Server,
                     SourceDatabase= sourceConnectionInfo.Database,
-                    SourceTableName= profileElement.Element("SourceTableName")?.Value,
+                    SourceTableName= profileElement.Attribute("SourceTableName")?.Value,
 
                     TargetServer=targetConnectionInfo.Server,
                     TargetDatabase=targetConnectionInfo.Database,
-                    TargetTableName= profileElement.Element("TargetTableName")?.Value
+                    TargetTableName= profileElement.Attribute("TargetTableName")?.Value
                 };
             }
 

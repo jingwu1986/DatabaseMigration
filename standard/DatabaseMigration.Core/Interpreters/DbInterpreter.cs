@@ -13,19 +13,21 @@ namespace DatabaseMigration.Core
     public abstract class DbInterpreter
     {
         #region Field & Property
-        public virtual string UnicodeInsertChar { get; } = "N";
+        private IObserver<FeedbackInfo> m_Observer;
         public const string RowNumberColumnName = "ROWNUMBER";
+        public virtual string UnicodeInsertChar { get; } = "N";
         public abstract string CommandParameterChar { get; }
         public abstract char QuotationLeftChar { get; }
         public abstract char QuotationRightChar { get; }
         public abstract DatabaseType DatabaseType { get; }
         public abstract bool SupportBulkCopy { get; }
+        public bool CancelRequested { get; set; }
         public GenerateScriptOption Option { get; set; } = new GenerateScriptOption();
         public ConnectionInfo ConnectionInfo { get; set; }
 
         public delegate void DataReadHandler(Table table, List<TableColumn> columns, List<Dictionary<string, object>> data, DataTable dataTable);
         public event DataReadHandler OnDataRead;
-        private IObserver<FeedbackInfo> m_Observer;
+
         #endregion
 
         #region Constructor     
@@ -131,7 +133,8 @@ namespace DatabaseMigration.Core
         }
 
         public async Task<int> InternalExecuteNonQuery(DbConnection dbConnection, string sql, Dictionary<string, object> paramaters = null, bool disposeConnection = true, bool async = false)
-        {
+        {      
+
 #if disposeConnection
             using (dbConnection)
 #endif
@@ -143,12 +146,12 @@ namespace DatabaseMigration.Core
                     var cmdParams = this.BuildCommandParameters(paramaters);
                     if (cmdParams != null)
                     {
-                        foreach(var parameter in cmdParams)
+                        foreach (var parameter in cmdParams)
                         {
                             dbCommander.DbCommand.Parameters.Add(parameter);
-                        }                       
+                        }
                     }
-                }
+                }                
 
                 int result = async ? await dbCommander.ExecuteNonQueryAsync() : dbCommander.ExecuteNonQuery();
 
@@ -170,7 +173,7 @@ namespace DatabaseMigration.Core
         {
             if (this.m_Observer != null)
             {
-                FeedbackHelper.Feedback(this.m_Observer, new FeedbackInfo() { Owner = this.GetType().Name, InfoType = infoType, Message = message });                
+                FeedbackHelper.Feedback(this.m_Observer, new FeedbackInfo() { Owner = this.GetType().Name, InfoType = infoType, Message = message });
             }
         }
 
@@ -512,6 +515,11 @@ namespace DatabaseMigration.Core
                 int count = 0;
                 foreach (Table table in schemaInfo.Tables)
                 {
+                    if(this.CancelRequested)
+                    {
+                        break;
+                    }
+
                     if (i < pickupIndex)
                     {
                         i++;
@@ -537,7 +545,7 @@ namespace DatabaseMigration.Core
 
                     int pageSize = Option.DataBatchSize;
 
-                    this.FeedbackInfo($"{strTableCount}Begin to read data from table {table.Name}, total rows:{total}.");
+                    this.FeedbackInfo($"{strTableCount}Table \"{table.Name}\":record count is {total}.");
 
                     Dictionary<long, List<Dictionary<string, object>>> dictPagedData;
                     if (isSelfReference)
@@ -556,7 +564,7 @@ namespace DatabaseMigration.Core
                             : this.GetPagedDataList(connection, table, columns, primaryKeyColumns, total, pageSize);
                     }
 
-                    this.FeedbackInfo($"{strTableCount}End read data from table {table.Name}.");
+                    this.FeedbackInfo($"{strTableCount}Table \"{table.Name}\":data read finished.");
 
                     this.AppendDataScripts(Option, sb, table, columns, dictPagedData);
 
@@ -640,6 +648,11 @@ namespace DatabaseMigration.Core
 
             for (long pageNumber = 1; pageNumber <= pageCount; pageNumber++)
             {
+                if (this.CancelRequested)
+                {
+                    break;
+                }
+
                 string pagedSql = this.GetPagedSql(quotedTableName, columnNames, primaryKeyColumns, whereClause, pageNumber, pageSize);
 
                 var dataTable = async ? await this.GetDataTableAsync(connection, pagedSql) : this.GetDataTable(connection, pagedSql);
@@ -675,9 +688,8 @@ namespace DatabaseMigration.Core
 
                 dictPagedData.Add(pageNumber, rows);
 
-                if (this.OnDataRead != null)
+                if (this.OnDataRead != null && !this.CancelRequested)
                 {
-                    this.FeedbackInfo($"Transfer data from table {table.Name}, rows:{rows.Count}.");
                     this.OnDataRead(table, columns, rows, dataTable);
                 }
             }
@@ -981,7 +993,7 @@ namespace DatabaseMigration.Core
         protected virtual string GetColumnDefaultValue(TableColumn column)
         {
             bool isChar = DataTypeHelper.IsCharType(column.DataType);
-            if(isChar && !column.DefaultValue.StartsWith("'"))
+            if (isChar && !column.DefaultValue.StartsWith("'"))
             {
                 return $"'{column.DefaultValue}'";
             }

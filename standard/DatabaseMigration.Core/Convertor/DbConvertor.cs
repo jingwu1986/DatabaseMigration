@@ -246,11 +246,12 @@ namespace DatabaseMigration.Core
                                         }
                                     }
 
-                                    targetInterpreter.FeedbackInfo($"End write data to table {table.Name}, handled rows count:{data.Count}.");
+                                    targetInterpreter.FeedbackInfo($"Table \"{table.Name}\":{data.Count} records transferred.");
                                 }
                                 catch (Exception ex)
                                 {
                                     this.hasError = true;
+                                    sourceInterpreter.CancelRequested = true;
 
                                     ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
                                     ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
@@ -320,6 +321,11 @@ namespace DatabaseMigration.Core
 
         public void Feedback(object owner, string content, FeedbackInfoType infoType = FeedbackInfoType.Info, bool enableLog = true)
         {
+            if(infoType==FeedbackInfoType.Error)
+            {
+                this.hasError = true;
+            }
+
             FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = content, Owner = owner?.GetType()?.Name };
 
             FeedbackHelper.Feedback(this.observer, info, enableLog);
