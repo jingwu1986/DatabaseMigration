@@ -96,6 +96,11 @@ namespace DatabaseMigration
             DatabaseType dbType = this.GetDatabaseType(type);
             frmDbConnect frmDbConnect = new frmDbConnect(dbType, profileName, requriePassword);
             this.SetConnectionInfo(isSource, frmDbConnect);
+
+            if (profileName != frmDbConnect.ProflieName)
+            {
+                this.LoadProfileNames(isSource, frmDbConnect.ProflieName);
+            }
         }
 
         private bool SetConnectionInfo(bool isSource, frmDbConnect frmDbConnect)

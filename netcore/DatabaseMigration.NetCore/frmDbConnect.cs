@@ -146,19 +146,25 @@ namespace DatabaseMigration
             string profileName = this.txtProfileName.Text.Trim();
             this.ConnectionInfo = this.GetConnectionInfo();
 
-            if(this.isAdd)
-            {               
-                List<ConnectionInfoProfile> profiles = ConnectionInfoProfileManager.GetProfiles(this.DatabaseType);
-               
-                if (!string.IsNullOrEmpty(profileName) && profiles.Any(item=>item.Name== profileName))
+            List<ConnectionInfoProfile> profiles = ConnectionInfoProfileManager.GetProfiles(this.DatabaseType);
+
+            if (!string.IsNullOrEmpty(profileName) && profiles.Any(item => item.Name == profileName))
+            {
+                string msg = $"The profile name \"{profileName}\" has been existed";
+                if (this.isAdd)
                 {
-                    DialogResult dialogResult = MessageBox.Show("The profile name is existed, are you sure to override it.", "Confirm", MessageBoxButtons.YesNo);
+                    DialogResult dialogResult = MessageBox.Show(msg + ", are you sure to override it.", "Confirm", MessageBoxButtons.YesNo);
 
                     if (dialogResult != DialogResult.Yes)
                     {
                         this.DialogResult = DialogResult.None;
                         return;
                     }
+                }
+                else if (!this.isAdd && this.ProflieName != profileName)
+                {
+                    MessageBox.Show(msg + ", please edit that.");
+                    return;
                 }
             }
 

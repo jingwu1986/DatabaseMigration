@@ -167,6 +167,8 @@
             // 
             // splitContainer1.Panel1
             // 
+            this.splitContainer1.Panel1.Controls.Add(this.btnCancel);
+            this.splitContainer1.Panel1.Controls.Add(this.btnExecute);
             this.splitContainer1.Panel1.Controls.Add(this.btnSourceScript);
             this.splitContainer1.Panel1.Controls.Add(this.btnRemoveTarget);
             this.splitContainer1.Panel1.Controls.Add(this.btnRemoveSource);
@@ -388,8 +390,6 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.groupBox1.Controls.Add(this.btnOutputFolder);
             this.groupBox1.Controls.Add(this.txtOutputFolder);
-            this.groupBox1.Controls.Add(this.btnCancel);
-            this.groupBox1.Controls.Add(this.btnExecute);
             this.groupBox1.Controls.Add(this.lblOutputFolder);
             this.groupBox1.Controls.Add(this.chkGenerateIdentity);
             this.groupBox1.Controls.Add(this.chkGenerateSourceScripts);
@@ -406,7 +406,7 @@
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Padding = new System.Windows.Forms.Padding(4);
-            this.groupBox1.Size = new System.Drawing.Size(419, 387);
+            this.groupBox1.Size = new System.Drawing.Size(419, 349);
             this.groupBox1.TabIndex = 20;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Options";
@@ -434,7 +434,7 @@
             // 
             this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnCancel.Enabled = false;
-            this.btnCancel.Location = new System.Drawing.Point(171, 353);
+            this.btnCancel.Location = new System.Drawing.Point(539, 425);
             this.btnCancel.Margin = new System.Windows.Forms.Padding(4);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(88, 30);
@@ -447,7 +447,7 @@
             // 
             this.btnExecute.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnExecute.Enabled = false;
-            this.btnExecute.Location = new System.Drawing.Point(58, 353);
+            this.btnExecute.Location = new System.Drawing.Point(426, 425);
             this.btnExecute.Margin = new System.Windows.Forms.Padding(4);
             this.btnExecute.Name = "btnExecute";
             this.btnExecute.Size = new System.Drawing.Size(88, 30);
