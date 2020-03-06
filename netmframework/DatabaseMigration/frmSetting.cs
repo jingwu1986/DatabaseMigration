@@ -20,6 +20,8 @@ namespace DatabaseMigration
 
         private void frmSetting_Load(object sender, EventArgs e)
         {
+            this.tabControl1.SelectedIndex = 0;
+
             Setting setting = SettingManager.Setting;
 
             this.numCommandTimeout.Value = setting.CommandTimeout;

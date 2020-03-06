@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -17,7 +18,7 @@ namespace DatabaseMigration
         private const string DONE = "Done";
         private ConnectionInfo sourceDbConnectionInfo;
         private ConnectionInfo targetDbConnectionInfo;
-        private StringBuilder sbFeedback = new StringBuilder();
+        private bool hasError = false;
 
         public frmMain()
         {
@@ -276,6 +277,8 @@ namespace DatabaseMigration
 
                     string message = ExceptionHelper.GetExceptionDetails(ex);
 
+                    LogHelper.LogInfo(message);
+
                     MessageBox.Show("Error:" + message);
                 }
 
@@ -344,6 +347,11 @@ namespace DatabaseMigration
             {
                 this.txtMessage.ForeColor = Color.Black;
                 this.txtMessage.Text = "";
+
+                FeedbackHelper.EnableLog = SettingManager.Setting.EnableLog;
+                LogHelper.EnableDebug = true;
+
+                this.hasError = false;
 
                 this.convertorBackgroundWorker.RunWorkerAsync();
             }
@@ -486,11 +494,12 @@ namespace DatabaseMigration
             DbConvetorInfo source = new DbConvetorInfo() { DbInterpreter = DbInterpreterHelper.GetDbInterpreter(sourceDbType, this.sourceDbConnectionInfo, sourceScriptOption) };
             DbConvetorInfo target = new DbConvetorInfo() { DbInterpreter = DbInterpreterHelper.GetDbInterpreter(targetDbType, this.targetDbConnectionInfo, targetScriptOption) };
 
-            DbConvertor dbConvertor = new DbConvertor(source, target, null);
+            DbConvertor dbConvertor = new DbConvertor(source, target);
             dbConvertor.Option.GenerateScriptMode = scriptMode;
             dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
+            dbConvertor.Option.ExecuteScriptOnTargetServer = this.chkExecuteOnTarget.Checked;
 
-            dbConvertor.OnFeedback += Feedback;
+            dbConvertor.Subscribe(this);
 
             if (sourceDbType == DatabaseType.MySql)
             {
@@ -524,19 +533,9 @@ namespace DatabaseMigration
             this.btnExecute.Enabled = false;
             this.btnCancel.Enabled = true;
 
-            bool success = false;
             try
             {
-                if (this.chkAsync.Checked)
-                {
-                    await dbConvertor.ConvertAsync(schemaInfo, false);
-                }
-                else
-                {
-                    dbConvertor.Convert(schemaInfo, false);
-                }
-
-                success = true;
+                await dbConvertor.Convert(schemaInfo, false);
 
                 if (dataErrorProfile != null)
                 {
@@ -545,38 +544,11 @@ namespace DatabaseMigration
             }
             catch (Exception ex)
             {
-                string errMsg = ExceptionHelper.GetExceptionDetails(ex);
-
-                sbFeedback.Append(errMsg);
-
-                this.AppendErrorMessage(sbFeedback.ToString());
-
-                this.txtMessage.SelectionStart = this.txtMessage.TextLength;
-                this.txtMessage.ScrollToCaret();
-
-                this.btnExecute.Enabled = true;
-                this.btnCancel.Enabled = false;
-
-                if (ex is TableDataTransferException dataException)
-                {
-                    DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
-                    {
-                        SourceServer = dataException.SourceServer,
-                        SourceDatabase = dataException.SourceDatabase,
-                        SourceTableName = dataException.SourceTableName,
-                        TargetServer = dataException.TargetServer,
-                        TargetDatabase = dataException.TargetDatabase,
-                        TargetTableName = dataException.TargetTableName
-                    });
-                }
-
-                MessageBox.Show(ex.Message);
+                this.hasError = true;
+                this.HandleException(ex);
             }
 
-            LogHelper.Log(sbFeedback.ToString());
-            sbFeedback.Clear();
-
-            if (success)
+            if (!this.hasError)
             {
                 this.btnExecute.Enabled = true;
                 this.btnCancel.Enabled = false;
@@ -586,33 +558,58 @@ namespace DatabaseMigration
             }
         }
 
+        private void HandleException(Exception ex)
+        {
+            string errMsg = ExceptionHelper.GetExceptionDetails(ex);
+
+            LogHelper.LogInfo(errMsg);
+
+            this.AppendMessage(errMsg);
+
+            this.txtMessage.SelectionStart = this.txtMessage.TextLength;
+            this.txtMessage.ScrollToCaret();
+
+            this.btnExecute.Enabled = true;
+            this.btnCancel.Enabled = false;
+
+            MessageBox.Show(ex.Message);
+        }
+
         private void Feedback(FeedbackInfo info)
         {
             this.Invoke(new Action(() =>
             {
-                sbFeedback.AppendLine($"{info.InfoType}:{info.Message}");
-
                 if (info.InfoType == FeedbackInfoType.Error)
                 {
-                    this.AppendErrorMessage(info.Message);
+                    this.hasError = true;
+                    this.btnExecute.Enabled = true;
+                    this.btnCancel.Enabled = false;
+
+                    this.AppendMessage(info.Message, true);
                 }
                 else
                 {
-                    this.txtMessage.Text += (this.txtMessage.Text.Length > 0 ? Environment.NewLine : "") + info.Message;
+                    this.AppendMessage(info.Message, false);
                 }
-
-                this.txtMessage.SelectionStart = this.txtMessage.TextLength;
-                this.txtMessage.ScrollToCaret();
             }));
         }
 
-        private void AppendErrorMessage(string errMsg)
+        private void AppendMessage(string message, bool isError = false)
         {
             int start = this.txtMessage.Text.Length;
-            this.txtMessage.Text += (this.txtMessage.Text.Length > 0 ? Environment.NewLine : "") + errMsg;
 
-            this.txtMessage.Select(start, errMsg.Length + 1);
-            this.txtMessage.SelectionColor = Color.Red;
+            if (start > 0)
+            {
+                this.txtMessage.AppendText(Environment.NewLine);
+            }
+
+            this.txtMessage.AppendText(message);
+
+            this.txtMessage.Select(start, this.txtMessage.Text.Length - start);
+            this.txtMessage.SelectionColor = isError ? Color.Red : Color.Black;
+
+            this.txtMessage.SelectionStart = this.txtMessage.TextLength;
+            this.txtMessage.ScrollToCaret();
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
@@ -634,7 +631,7 @@ namespace DatabaseMigration
             }
         }
 
-        private void SourceScriptBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private async void SourceScriptBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
         {
             if (this.sourceScriptBackgroundWorker.CancellationPending)
             {
@@ -674,21 +671,34 @@ namespace DatabaseMigration
                 ViewNames = viewNames
             };
 
-            schemaInfo = dbInterpreter.GetSchemaInfo(selectionInfo, false);
+            schemaInfo = await dbInterpreter.GetSchemaInfo(selectionInfo, false);
 
             dbInterpreter.Subscribe(this);
 
+            GenerateScriptMode mode = GenerateScriptMode.None;
+
             if (scriptMode.HasFlag(GenerateScriptMode.Schema))
             {
-                dbInterpreter.GenerateSchemaScripts(schemaInfo);
+                mode = GenerateScriptMode.Schema;
+                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
             }
 
             if (scriptMode.HasFlag(GenerateScriptMode.Data))
             {
-                dbInterpreter.GenerateDataScripts(schemaInfo);
+                mode = GenerateScriptMode.Data;
+                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
             }
 
+            this.OpenInExplorer(dbInterpreter.GetScriptOutputFilePath(mode));
+
             MessageBox.Show(DONE);
+        }
+
+        public void OpenInExplorer(string filePath)
+        {
+            string cmd = "explorer.exe";
+            string arg = "/select," + filePath;
+            Process.Start(cmd, arg);
         }
 
         private void settingToolStripMenuItem_Click(object sender, EventArgs e)
@@ -808,11 +818,6 @@ namespace DatabaseMigration
 
         private void btnOutputFolder_Click(object sender, EventArgs e)
         {
-            if (this.dlgOutputFolder == null)
-            {
-                this.dlgOutputFolder = new FolderBrowserDialog();
-            }
-
             DialogResult result = this.dlgOutputFolder.ShowDialog();
             if (result == DialogResult.OK)
             {

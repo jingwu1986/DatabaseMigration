@@ -37,12 +37,12 @@
             this.label2 = new System.Windows.Forms.Label();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabGeneral = new System.Windows.Forms.TabPage();
+            this.chkEnableLog = new System.Windows.Forms.CheckBox();
             this.tabMySql = new System.Windows.Forms.TabPage();
             this.txtMySqlCharsetCollation = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
             this.txtMySqlCharset = new System.Windows.Forms.TextBox();
             this.lblMySqlCharset = new System.Windows.Forms.Label();
-            this.chkEnableLog = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.numCommandTimeout)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDataBatchSize)).BeginInit();
             this.tabControl1.SuspendLayout();
@@ -53,7 +53,7 @@
             // lblCommandTimeout
             // 
             this.lblCommandTimeout.AutoSize = true;
-            this.lblCommandTimeout.Location = new System.Drawing.Point(6, 12);
+            this.lblCommandTimeout.Location = new System.Drawing.Point(9, 12);
             this.lblCommandTimeout.Name = "lblCommandTimeout";
             this.lblCommandTimeout.Size = new System.Drawing.Size(101, 12);
             this.lblCommandTimeout.TabIndex = 0;
@@ -61,7 +61,7 @@
             // 
             // numCommandTimeout
             // 
-            this.numCommandTimeout.Location = new System.Drawing.Point(113, 10);
+            this.numCommandTimeout.Location = new System.Drawing.Point(116, 10);
             this.numCommandTimeout.Maximum = new decimal(new int[] {
             10000,
             0,
@@ -107,7 +107,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(210, 12);
+            this.label1.Location = new System.Drawing.Point(213, 12);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(53, 12);
             this.label1.TabIndex = 12;
@@ -115,7 +115,7 @@
             // 
             // numDataBatchSize
             // 
-            this.numDataBatchSize.Location = new System.Drawing.Point(113, 39);
+            this.numDataBatchSize.Location = new System.Drawing.Point(116, 39);
             this.numDataBatchSize.Maximum = new decimal(new int[] {
             10000,
             0,
@@ -138,7 +138,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(6, 41);
+            this.label2.Location = new System.Drawing.Point(9, 41);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(101, 12);
             this.label2.TabIndex = 13;
@@ -173,6 +173,16 @@
             this.tabGeneral.TabIndex = 0;
             this.tabGeneral.Text = "General";
             // 
+            // chkEnableLog
+            // 
+            this.chkEnableLog.AutoSize = true;
+            this.chkEnableLog.Location = new System.Drawing.Point(11, 72);
+            this.chkEnableLog.Name = "chkEnableLog";
+            this.chkEnableLog.Size = new System.Drawing.Size(84, 16);
+            this.chkEnableLog.TabIndex = 15;
+            this.chkEnableLog.Text = "Enable log";
+            this.chkEnableLog.UseVisualStyleBackColor = true;
+            // 
             // tabMySql
             // 
             this.tabMySql.BackColor = System.Drawing.SystemColors.Control;
@@ -189,7 +199,7 @@
             // 
             // txtMySqlCharsetCollation
             // 
-            this.txtMySqlCharsetCollation.Location = new System.Drawing.Point(141, 50);
+            this.txtMySqlCharsetCollation.Location = new System.Drawing.Point(134, 50);
             this.txtMySqlCharsetCollation.Name = "txtMySqlCharsetCollation";
             this.txtMySqlCharsetCollation.Size = new System.Drawing.Size(100, 21);
             this.txtMySqlCharsetCollation.TabIndex = 3;
@@ -197,7 +207,7 @@
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(22, 53);
+            this.label3.Location = new System.Drawing.Point(15, 53);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(113, 12);
             this.label3.TabIndex = 2;
@@ -205,7 +215,7 @@
             // 
             // txtMySqlCharset
             // 
-            this.txtMySqlCharset.Location = new System.Drawing.Point(141, 19);
+            this.txtMySqlCharset.Location = new System.Drawing.Point(134, 19);
             this.txtMySqlCharset.Name = "txtMySqlCharset";
             this.txtMySqlCharset.Size = new System.Drawing.Size(100, 21);
             this.txtMySqlCharset.TabIndex = 1;
@@ -213,21 +223,11 @@
             // lblMySqlCharset
             // 
             this.lblMySqlCharset.AutoSize = true;
-            this.lblMySqlCharset.Location = new System.Drawing.Point(22, 19);
+            this.lblMySqlCharset.Location = new System.Drawing.Point(15, 22);
             this.lblMySqlCharset.Name = "lblMySqlCharset";
             this.lblMySqlCharset.Size = new System.Drawing.Size(53, 12);
             this.lblMySqlCharset.TabIndex = 0;
             this.lblMySqlCharset.Text = "Charset:";
-            // 
-            // chkEnableLog
-            // 
-            this.chkEnableLog.AutoSize = true;
-            this.chkEnableLog.Location = new System.Drawing.Point(8, 72);
-            this.chkEnableLog.Name = "chkEnableLog";
-            this.chkEnableLog.Size = new System.Drawing.Size(84, 16);
-            this.chkEnableLog.TabIndex = 15;
-            this.chkEnableLog.Text = "Enable log";
-            this.chkEnableLog.UseVisualStyleBackColor = true;
             // 
             // frmSetting
             // 

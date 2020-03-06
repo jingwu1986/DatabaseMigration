@@ -12,7 +12,7 @@ namespace DatabaseMigration.Test
     {
         static ConnectionInfo sqlServerConn = new ConnectionInfo() { Server = "127.0.0.1", Database = "Northwind", UserId = "sa", Password = "123" };
         static ConnectionInfo mySqlConn = new ConnectionInfo() { Server = "localhost", Database = "northwind", UserId = "sa", Password = "1234" };
-        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "northwind", UserId = "C##TEST", Password = "test" };
+        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "test", UserId = "C##TEST", Password = "test" };
 
         static GenerateScriptOption option = new GenerateScriptOption()
         {
@@ -22,7 +22,7 @@ namespace DatabaseMigration.Test
 
         static SqlServerInterpreter sqlServerInterpreter = new SqlServerInterpreter(sqlServerConn, option);
         static MySqlInterpreter mySqlInterpreter = new MySqlInterpreter(mySqlConn, option);
-        static OracleInterpreter oracleInterpreter = new OracleInterpreter(oracleConn, option);           
+        static OracleInterpreter oracleInterpreter = new OracleInterpreter(oracleConn, option);
 
         static void Main(string[] args)
         {
@@ -31,12 +31,12 @@ namespace DatabaseMigration.Test
             //TestConvertor(sqlServerInterpreter, mySqlInterpreter);           
 
             Console.ReadLine();
-        }       
+        }
 
         static void TestInterpreter()
         {
             InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter), new SelectionInfo() { });
-            InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
+            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
             //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter), new SelectionInfo() { });
         }
 
@@ -48,7 +48,7 @@ namespace DatabaseMigration.Test
             int dataBatchSize = 500;
 
             GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.WriteToString, DataBatchSize = dataBatchSize };
-            GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = ( GenerateScriptOutputMode.WriteToFile | GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
+            GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToFile | GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
 
             sourceInterpreter.Option = sourceScriptOption;
             targetInterpreter.Option = targetScriptOption;
@@ -88,16 +88,9 @@ namespace DatabaseMigration.Test
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
-                if (ex is TableDataTransferException)
-                {
-                    TableDataTransferException dataException = ex as TableDataTransferException;
-                    msg = $"Error occurs when sync data of table {dataException.TargetTableName}:{msg}";
-                }
+                string msg = ExceptionHelper.GetExceptionDetails(ex);
 
-                msg += Environment.NewLine + "StackTrace:" + Environment.NewLine + ex.StackTrace;
-
-                Feedback(new FeedbackInfo() { InfoType = FeedbackInfoType.Error, Message = msg  });
+                Feedback(new FeedbackInfo() { InfoType = FeedbackInfoType.Error, Message = msg });
             }
         }
 
@@ -105,8 +98,11 @@ namespace DatabaseMigration.Test
         {
             if (info.InfoType == FeedbackInfoType.Error)
             {
-                Console.ForegroundColor = ConsoleColor.Red;               
+                Console.ForegroundColor = ConsoleColor.Red;
             }
+
+            LogHelper.LogInfo(info.Message);
+
             Console.WriteLine(info.Message);
         }
     }

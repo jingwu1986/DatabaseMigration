@@ -59,7 +59,6 @@
             this.btnExecute = new System.Windows.Forms.Button();
             this.lblOutputFolder = new System.Windows.Forms.Label();
             this.chkGenerateIdentity = new System.Windows.Forms.CheckBox();
-            this.chkAsync = new System.Windows.Forms.CheckBox();
             this.chkGenerateSourceScripts = new System.Windows.Forms.CheckBox();
             this.chkPickup = new System.Windows.Forms.CheckBox();
             this.chkBulkCopy = new System.Windows.Forms.CheckBox();
@@ -393,7 +392,6 @@
             this.groupBox1.Controls.Add(this.btnExecute);
             this.groupBox1.Controls.Add(this.lblOutputFolder);
             this.groupBox1.Controls.Add(this.chkGenerateIdentity);
-            this.groupBox1.Controls.Add(this.chkAsync);
             this.groupBox1.Controls.Add(this.chkGenerateSourceScripts);
             this.groupBox1.Controls.Add(this.chkPickup);
             this.groupBox1.Controls.Add(this.chkBulkCopy);
@@ -415,7 +413,7 @@
             // 
             // btnOutputFolder
             // 
-            this.btnOutputFolder.Location = new System.Drawing.Point(323, 317);
+            this.btnOutputFolder.Location = new System.Drawing.Point(323, 272);
             this.btnOutputFolder.Margin = new System.Windows.Forms.Padding(4);
             this.btnOutputFolder.Name = "btnOutputFolder";
             this.btnOutputFolder.Size = new System.Drawing.Size(42, 24);
@@ -426,7 +424,7 @@
             // 
             // txtOutputFolder
             // 
-            this.txtOutputFolder.Location = new System.Drawing.Point(108, 317);
+            this.txtOutputFolder.Location = new System.Drawing.Point(108, 272);
             this.txtOutputFolder.Margin = new System.Windows.Forms.Padding(4);
             this.txtOutputFolder.Name = "txtOutputFolder";
             this.txtOutputFolder.Size = new System.Drawing.Size(207, 23);
@@ -436,7 +434,7 @@
             // 
             this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnCancel.Enabled = false;
-            this.btnCancel.Location = new System.Drawing.Point(171, 355);
+            this.btnCancel.Location = new System.Drawing.Point(171, 353);
             this.btnCancel.Margin = new System.Windows.Forms.Padding(4);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(88, 30);
@@ -449,7 +447,7 @@
             // 
             this.btnExecute.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
             this.btnExecute.Enabled = false;
-            this.btnExecute.Location = new System.Drawing.Point(58, 355);
+            this.btnExecute.Location = new System.Drawing.Point(58, 353);
             this.btnExecute.Margin = new System.Windows.Forms.Padding(4);
             this.btnExecute.Name = "btnExecute";
             this.btnExecute.Size = new System.Drawing.Size(88, 30);
@@ -461,7 +459,7 @@
             // lblOutputFolder
             // 
             this.lblOutputFolder.AutoSize = true;
-            this.lblOutputFolder.Location = new System.Drawing.Point(8, 320);
+            this.lblOutputFolder.Location = new System.Drawing.Point(8, 275);
             this.lblOutputFolder.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblOutputFolder.Name = "lblOutputFolder";
             this.lblOutputFolder.Size = new System.Drawing.Size(92, 17);
@@ -478,19 +476,6 @@
             this.chkGenerateIdentity.TabIndex = 14;
             this.chkGenerateIdentity.Text = "Generate identity";
             this.chkGenerateIdentity.UseVisualStyleBackColor = true;
-            // 
-            // chkAsync
-            // 
-            this.chkAsync.AutoSize = true;
-            this.chkAsync.Checked = true;
-            this.chkAsync.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkAsync.Location = new System.Drawing.Point(11, 281);
-            this.chkAsync.Margin = new System.Windows.Forms.Padding(4);
-            this.chkAsync.Name = "chkAsync";
-            this.chkAsync.Size = new System.Drawing.Size(180, 21);
-            this.chkAsync.TabIndex = 16;
-            this.chkAsync.Text = "Use async to transfer data";
-            this.chkAsync.UseVisualStyleBackColor = true;
             // 
             // chkGenerateSourceScripts
             // 
@@ -671,7 +656,6 @@
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnExecute;
         private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.CheckBox chkAsync;
         private System.Windows.Forms.CheckBox chkBulkCopy;
         private System.Windows.Forms.CheckBox chkGenerateIdentity;
         private System.Windows.Forms.CheckBox chkPickup;
