@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -674,17 +675,30 @@ namespace DatabaseMigration
 
             dbInterpreter.Subscribe(this);
 
+            GenerateScriptMode mode = GenerateScriptMode.None;
+
             if (scriptMode.HasFlag(GenerateScriptMode.Schema))
             {
-                dbInterpreter.GenerateSchemaScripts(schemaInfo);
+                mode = GenerateScriptMode.Schema;
+                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
             }
 
             if (scriptMode.HasFlag(GenerateScriptMode.Data))
             {
-                dbInterpreter.GenerateDataScripts(schemaInfo);
+                mode = GenerateScriptMode.Data;
+                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
             }
 
+            this.OpenInExplorer(dbInterpreter.GetScriptOutputFilePath(mode));
+
             MessageBox.Show(DONE);
+        }
+
+        public void OpenInExplorer(string filePath)
+        {
+            string cmd = "explorer.exe";
+            string arg = "/select," + filePath;
+            Process.Start(cmd, arg);
         }
 
         private void settingToolStripMenuItem_Click(object sender, EventArgs e)

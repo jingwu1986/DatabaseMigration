@@ -802,10 +802,16 @@ namespace DatabaseMigration.Core
             return (isAllEnd ? ";" : ",");
         }
 
-        public virtual void AppendScriptsToFile(string content, GenerateScriptMode generateScriptMode, bool clearAll = false)
+        public string GetScriptOutputFilePath(GenerateScriptMode generateScriptMode)
         {
             string fileName = $"{this.ConnectionInfo.Database}_{this.GetType().Name.Replace("Interpreter", "")}_{DateTime.Today.ToString("yyyyMMdd")}_{generateScriptMode.ToString()}.sql";
             string filePath = Path.Combine(Option.ScriptOutputFolder, fileName);
+            return filePath;
+        }
+
+        public virtual void AppendScriptsToFile(string content, GenerateScriptMode generateScriptMode, bool clearAll = false)
+        {
+            string filePath = this.GetScriptOutputFilePath(generateScriptMode);
 
             string directoryName = Path.GetDirectoryName(filePath);
 
