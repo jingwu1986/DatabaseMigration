@@ -88,14 +88,7 @@ class Program
             }
             catch (Exception ex)
             {
-                string msg = ex.Message;
-                if (ex is TableDataTransferException)
-                {
-                    TableDataTransferException dataException = ex as TableDataTransferException;
-                    msg = $"Error occurs when sync data of table {dataException.TargetTableName}:{msg}";
-                }
-
-                msg += Environment.NewLine + "StackTrace:" + Environment.NewLine + ex.StackTrace;
+                string msg = ExceptionHelper.GetExceptionDetails(ex);               
 
                 Feedback(new FeedbackInfo() { InfoType = FeedbackInfoType.Error, Message = msg  });
             }
@@ -107,6 +100,9 @@ class Program
             {
                 Console.ForegroundColor = ConsoleColor.Red;               
             }
+            
+            LogHelper.LogInfo(info.Message);
+            
             Console.WriteLine(info.Message);
         }
     }
