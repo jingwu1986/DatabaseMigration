@@ -78,7 +78,7 @@ namespace DatabaseMigration.Core
                 ViewNames = viewNames
             };
 
-            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfo(selectionInfo, getAllIfNotSpecified);
+            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(selectionInfo, getAllIfNotSpecified);
 
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);
 

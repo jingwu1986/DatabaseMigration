@@ -671,7 +671,7 @@ namespace DatabaseMigration
                 ViewNames = viewNames
             };
 
-            schemaInfo = await dbInterpreter.GetSchemaInfo(selectionInfo, false);
+            schemaInfo = await dbInterpreter.GetSchemaInfoAsync(selectionInfo, false);
 
             dbInterpreter.Subscribe(this);
 

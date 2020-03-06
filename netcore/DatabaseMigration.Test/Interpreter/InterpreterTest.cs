@@ -25,28 +25,28 @@ namespace DatabaseMigration.Test
         #region Table Column
         public List<TableColumn> GetTableColumns(params string[] tableNames)
         {
-            return Interpreter.GetTableColumns(tableNames);          
+            return Interpreter.GetTableColumns(tableNames);
         }
         #endregion
 
         #region Table Primary Key
         public List<TablePrimaryKey> GetTablePrimaryKeys(params string[] tableNames)
         {
-            return Interpreter.GetTablePrimaryKeys(tableNames);          
+            return Interpreter.GetTablePrimaryKeys(tableNames);
         }
         #endregion
 
         #region Table Foreign Key
         public List<TableForeignKey> GetTableForeignKeys(params string[] tableNames)
         {
-            return Interpreter.GetTableForeignKeys(tableNames);            
+            return Interpreter.GetTableForeignKeys(tableNames);
         }
         #endregion
 
         #region Table Index
         public List<TableIndex> GetTableIndexes(params string[] tableNames)
         {
-            return Interpreter.GetTableIndexes(tableNames);           
+            return Interpreter.GetTableIndexes(tableNames);
         }
         #endregion
 
@@ -64,7 +64,7 @@ namespace DatabaseMigration.Test
             {
                 TableNames = schemaInfo.Tables.Select(item => item.Name).ToArray()
             };
-            
+
             return Interpreter.GenerateSchemaScripts(Interpreter.GetSchemaInfo(selectionInfo, false));
         }
         #endregion
@@ -76,9 +76,9 @@ namespace DatabaseMigration.Test
             {
                 TableNames = schemaInfo.Tables.Select(item => item.Name).ToArray()
             };
-           
+
             return Interpreter.GenerateDataScripts(Interpreter.GetSchemaInfo(selectionInfo, false));
-        } 
+        }
         #endregion
     }
 }

@@ -382,7 +382,12 @@ namespace DatabaseMigration.Core
 
         #region Generate Scripts       
 
-        public virtual Task<SchemaInfo> GetSchemaInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
+        public virtual SchemaInfo GetSchemaInfo(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
+        {
+            return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, false).Result;
+        }
+
+        public virtual Task<SchemaInfo> GetSchemaInfoAsync(SelectionInfo selectionInfo, bool getAllIfNotSpecified = true)
         {
             return this.InternalGetSchemalInfo(selectionInfo, getAllIfNotSpecified, true);
         }
