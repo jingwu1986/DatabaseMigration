@@ -1,4 +1,6 @@
-﻿namespace DatabaseMigration.Core
+﻿using DatabaseInterpreter.Model;
+
+namespace DatabaseMigration.Core
 {
     public class DbConvertorOption
     {       

@@ -1,4 +1,7 @@
-﻿using DatabaseMigration.Profile;
+﻿using DatabaseInterpreter.Core;
+using DatabaseInterpreter.Model;
+using DatabaseInterpreter.Utility;
+using DatabaseMigration.Profile;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
@@ -60,9 +63,9 @@ namespace DatabaseMigration.Core
 
             if (schemaInfo == null || getAllIfNotSpecified)
             {
-                tableNames = sourceInterpreter.GetTables().Select(item => item.Name).ToArray();
-                userDefinedTypeNames = sourceInterpreter.GetUserDefinedTypes().Select(item => item.Name).ToArray();
-                viewNames = sourceInterpreter.GetViews().Select(item => item.Name).ToArray();
+                tableNames = (await sourceInterpreter.GetTablesAsync()).Select(item => item.Name).ToArray();
+                userDefinedTypeNames =(await sourceInterpreter.GetUserDefinedTypesAsync()).Select(item => item.Name).ToArray();
+                viewNames =(await sourceInterpreter.GetViewsAsync()).Select(item => item.Name).ToArray();
             }
             else
             {
@@ -80,6 +83,25 @@ namespace DatabaseMigration.Core
 
             SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(selectionInfo, getAllIfNotSpecified);
 
+            #region Set data type by user define type          
+
+            List<UserDefinedType> utypes = await sourceInterpreter.GetUserDefinedTypesAsync();
+
+            if (utypes != null && utypes.Count > 0)
+            {
+                foreach (TableColumn column in sourceSchemaInfo.Columns)
+                {
+                    UserDefinedType utype = utypes.FirstOrDefault(item => item.Name == column.DataType);
+                    if (utype != null)
+                    {
+                        column.DataType = utype.Type;
+                        column.MaxLength = utype.MaxLength;
+                    }
+                }
+            }
+
+            #endregion
+
             SchemaInfo targetSchemaInfo = SchemaInfoHelper.Clone(sourceSchemaInfo);
 
             if (!string.IsNullOrEmpty(this.Target.DbOwner))
@@ -88,7 +110,9 @@ namespace DatabaseMigration.Core
             }
 
             targetSchemaInfo.Columns = ColumnTranslator.Translate(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
-            targetSchemaInfo.Views = ViewTranslator.Translate(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
+
+            ViewTranslator viewTranslator=new ViewTranslator(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
+            targetSchemaInfo.Views = viewTranslator.Translate();
 
             if (this.Option.EnsurePrimaryKeyNameUnique)
             {
@@ -153,14 +177,14 @@ namespace DatabaseMigration.Core
                         {
                             i++;
                             targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}");
-                            targetInterpreter.ExecuteNonQuery(sql.Trim());
+                            await targetInterpreter.ExecuteNonQueryAsync(sql.Trim());
                         }
                     }
                 }
                 targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
             }
 
-            if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data))
+            if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
             {
                 List<TableColumn> identityTableColumns = new List<TableColumn>();
                 if (generateIdentity)
@@ -210,12 +234,12 @@ namespace DatabaseMigration.Core
                                         script = sb.ToString();
                                         sb.Clear();
                                     }
-                                    catch (OutOfMemoryException e)
+                                    catch (OutOfMemoryException)
                                     {
                                         sb.Clear();
                                     }
 
-                                    if(this.Option.ExecuteScriptOnTargetServer)
+                                    if (this.Option.ExecuteScriptOnTargetServer)
                                     {
                                         if (!this.Option.SplitScriptsToExecute)
                                         {
@@ -249,7 +273,7 @@ namespace DatabaseMigration.Core
                                         }
 
                                         targetInterpreter.FeedbackInfo($"Table \"{table.Name}\":{data.Count} records transferred.");
-                                    }                                   
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -259,14 +283,14 @@ namespace DatabaseMigration.Core
                                     ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
                                     ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
 
-                                    TableDataTransferException tableDataTransferException = new TableDataTransferException(ex)
+                                    DataTransferException tableDataTransferException = new DataTransferException(ex)
                                     {
                                         SourceServer = sourceConnectionInfo.Server,
                                         SourceDatabase = sourceConnectionInfo.Database,
-                                        SourceTableName = table.Name,
+                                        SourceObject = table.Name,
                                         TargetServer = targetConnectionInfo.Server,
                                         TargetDatabase = targetConnectionInfo.Database,
-                                        TargetTableName = table.Name
+                                        TargetObject = table.Name
                                     };
 
                                     string errMsg = ExceptionHelper.GetExceptionDetails(tableDataTransferException);
@@ -324,12 +348,12 @@ namespace DatabaseMigration.Core
 
         public void Feedback(object owner, string content, FeedbackInfoType infoType = FeedbackInfoType.Info, bool enableLog = true)
         {
-            if(infoType==FeedbackInfoType.Error)
+            if (infoType == FeedbackInfoType.Error)
             {
                 this.hasError = true;
             }
 
-            FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = content, Owner = owner?.GetType()?.Name };
+            FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = content, Owner = owner };
 
             FeedbackHelper.Feedback(this.observer, info, enableLog);
 

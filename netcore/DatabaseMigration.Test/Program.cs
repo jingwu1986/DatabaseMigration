@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Data.Common;
-using System.Linq;
-using System.Text;
-using DatabaseMigration.Core;
+﻿using DatabaseInterpreter.Core;
+using DatabaseInterpreter.Model;
+using DatabaseMigration.Demo;
+using System;
 
 namespace DatabaseMigration.Test
 {
     class Program
     {
-        static ConnectionInfo sqlServerConn = new ConnectionInfo() { Server = "127.0.0.1", Database = "Northwind", UserId = "sa", Password = "123" };
+        static ConnectionInfo sqlServerConn = new ConnectionInfo() { Server = @".\sql2019", Database = "Northwind", IntegratedSecurity = true };
         static ConnectionInfo mySqlConn = new ConnectionInfo() { Server = "localhost", Database = "northwind", UserId = "sa", Password = "1234" };
-        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "test", UserId = "C##TEST", Password = "test" };
+        static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "Northwind", UserId = "C##northwind", Password = "TEST" };
 
         static GenerateScriptOption option = new GenerateScriptOption()
         {
@@ -26,84 +23,18 @@ namespace DatabaseMigration.Test
 
         static void Main(string[] args)
         {
-            TestInterpreter();
-
-            //TestConvertor(sqlServerInterpreter, mySqlInterpreter);           
+            RunDemo();
 
             Console.ReadLine();
         }
 
-        static void TestInterpreter()
+        static async void RunDemo()
         {
-            InterpreterTestRuner.Run(new InterpreterTest(sqlServerInterpreter), new SelectionInfo() { });
-            //InterpreterTestRuner.Run(new InterpreterTest(mySqlInterpreter), new SelectionInfo() { });
-            //InterpreterTestRuner.Run(new InterpreterTest(oracleInterpreter), new SelectionInfo() { });
-        }
+            //await ConvertorDemoRuner.Run(new ConvertorDemo(sqlServerInterpreter, mySqlInterpreter));
+            //await ConvertorDemoRuner.Run(new ConvertorDemo(sqlServerInterpreter, oracleInterpreter));
+            await ConvertorDemoRuner.Run(new ConvertorDemo(mySqlInterpreter, oracleInterpreter));
 
-        static void TestConvertor(DbInterpreter sourceInterpreter, DbInterpreter targetInterpreter)
-        {
-            DatabaseType sourceDbType = sourceInterpreter.DatabaseType;
-            DatabaseType targetDbType = targetInterpreter.DatabaseType;
-
-            int dataBatchSize = 500;
-
-            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.WriteToString, DataBatchSize = dataBatchSize };
-            GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToFile | GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
-
-            sourceInterpreter.Option = sourceScriptOption;
-            targetInterpreter.Option = targetScriptOption;
-
-            GenerateScriptMode scriptMode = GenerateScriptMode.Schema | GenerateScriptMode.Data;
-
-            DbConvetorInfo source = new DbConvetorInfo() { DbInterpreter = sourceInterpreter };
-            DbConvetorInfo target = new DbConvetorInfo() { DbInterpreter = targetInterpreter };
-
-            DbConvertor dbConvertor = new DbConvertor(source, target, null);
-            dbConvertor.Option.GenerateScriptMode = scriptMode;
-
-            dbConvertor.OnFeedback += Feedback;
-
-            if (sourceDbType == DatabaseType.MySql)
-            {
-                source.DbInterpreter.Option.InQueryItemLimitCount = 2000;
-            }
-
-            if (targetDbType == DatabaseType.SqlServer)
-            {
-                target.DbOwner = "dbo";
-            }
-            else if (targetDbType == DatabaseType.MySql)
-            {
-                target.DbInterpreter.Option.RemoveEmoji = true;
-            }
-            else if (targetDbType == DatabaseType.Oracle)
-            {
-                dbConvertor.Option.SplitScriptsToExecute = true;
-                dbConvertor.Option.ScriptSplitChar = ';';
-            }
-
-            try
-            {
-                dbConvertor.Convert();
-            }
-            catch (Exception ex)
-            {
-                string msg = ExceptionHelper.GetExceptionDetails(ex);
-
-                Feedback(new FeedbackInfo() { InfoType = FeedbackInfoType.Error, Message = msg });
-            }
-        }
-
-        private static void Feedback(FeedbackInfo info)
-        {
-            if (info.InfoType == FeedbackInfoType.Error)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-            }
-
-            LogHelper.LogInfo(info.Message);
-
-            Console.WriteLine(info.Message);
+            Console.WriteLine("OK");
         }
     }
 }

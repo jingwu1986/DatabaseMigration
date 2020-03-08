@@ -15,7 +15,7 @@ using DatabaseInterpreter.Utility;
 using DatabaseMigration.Core;
 using DatabaseMigration.Profile;
 
-namespace DatabaseMigration
+namespace DatabaseMigration.Win
 {
     public partial class frmMain : Form, IObserver<FeedbackInfo>
     {
@@ -424,9 +424,9 @@ namespace DatabaseMigration
                     if (Directory.Exists(outputFolder))
                     {
                         option.ScriptOutputFolder = outputFolder;
-                    }
+                    }                    
                 }
-            }
+            }           
         }
 
         private GenerateScriptMode GetGenerateScriptMode()
@@ -814,7 +814,7 @@ namespace DatabaseMigration
 
         private void btnSaveMessage_Click(object sender, EventArgs e)
         {
-            if (this.dlgSaveLog == null)
+            if(this.dlgSaveLog==null)
             {
                 this.dlgSaveLog = new SaveFileDialog();
             }
@@ -830,7 +830,7 @@ namespace DatabaseMigration
 
         private void btnOutputFolder_Click(object sender, EventArgs e)
         {
-            if (this.dlgOutputFolder == null)
+            if(this.dlgOutputFolder==null)
             {
                 this.dlgOutputFolder = new FolderBrowserDialog();
             }

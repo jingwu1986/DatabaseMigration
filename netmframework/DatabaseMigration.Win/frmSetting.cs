@@ -3,7 +3,7 @@ using DatabaseInterpreter.Model;
 using System;
 using System.Windows.Forms;
 
-namespace DatabaseMigration
+namespace DatabaseMigration.Win
 {
     public partial class frmSetting : Form
     {

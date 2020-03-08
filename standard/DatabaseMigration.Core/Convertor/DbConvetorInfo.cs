@@ -1,4 +1,6 @@
-﻿namespace DatabaseMigration.Core
+﻿using DatabaseInterpreter.Core;
+
+namespace DatabaseMigration.Core
 {
     public class DbConvetorInfo
     {

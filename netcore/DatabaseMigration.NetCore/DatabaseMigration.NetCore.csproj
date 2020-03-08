@@ -15,6 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\DatabaseInterpreter\DatabaseInterpreter.Core\DatabaseInterpreter.Core.csproj" />
+    <ProjectReference Include="..\..\..\DatabaseInterpreter\DatabaseInterpreter.Utility\DatabaseInterpreter.Utility.csproj" />
     <ProjectReference Include="..\..\standard\DatabaseMigration.Core\DatabaseMigration.Core.csproj" />
   </ItemGroup>
 
