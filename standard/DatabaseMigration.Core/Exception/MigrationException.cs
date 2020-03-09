@@ -28,15 +28,31 @@ namespace DatabaseMigration.Core
         {
             get
             {
-                return
-                $"ObjectType:{this.ObjectType}" + Environment.NewLine +
-                $"SourceServer:{this.SourceServer}" + Environment.NewLine +
-                $"SourceDatabase:{this.SourceDatabase}" + Environment.NewLine +
-                $"SourceObject:{this.SourceObject}" + Environment.NewLine +
-                $"TargetServer:{this.TargetServer}" + Environment.NewLine +
-                $"TargetDatabase:{this.TargetDatabase}" + Environment.NewLine +
-                $"TargetObject:{this.TargetObject}" + Environment.NewLine +
-                BaseException?.StackTrace;
+                StringBuilder sb = new StringBuilder();
+
+                sb.AppendLine($"ObjectType:{this.ObjectType}");
+                sb.AppendLine($"SourceServer:{this.SourceServer}");
+                sb.AppendLine( $"SourceDatabase:{this.SourceDatabase}");
+
+                if(!string.IsNullOrEmpty(this.SourceObject))
+                {
+                    sb.AppendLine($"SourceObject:{this.SourceObject}");
+                }
+
+                sb.AppendLine($"TargetServer:{this.TargetServer}");
+                sb.AppendLine($"TargetDatabase:{this.TargetDatabase}");
+
+                if(!string.IsNullOrEmpty(this.TargetObject))
+                {
+                    sb.AppendLine($"TargetObject:{this.TargetObject}");
+                }
+
+                if(!string.IsNullOrEmpty(BaseException?.StackTrace))
+                {
+                    sb.AppendLine(BaseException?.StackTrace);
+                }
+
+                return sb.ToString();
             }
         }
     }    

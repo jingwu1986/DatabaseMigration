@@ -11,6 +11,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using TSQL;
 using TSQL.Tokens;
+using PoorMansTSqlFormatterRedux;
 
 namespace DatabaseMigration.Core
 {
@@ -135,6 +136,8 @@ namespace DatabaseMigration.Core
 
             definition = this.HandleDefinition(definition, tokens, out changed);
 
+
+
             StringBuilder sb = new StringBuilder();
 
             bool ignore = false;
@@ -245,6 +248,55 @@ namespace DatabaseMigration.Core
             }
 
             definition = sb.ToString();
+
+            #region Handle join cluase for mysql which has no "on", so it needs to make up that.
+            try
+            {
+                if (this.sourceDbInterpreter.GetType() == typeof(MySqlInterpreter))
+                {
+                    bool hasError = false;
+                    string formattedDefinition = this.FormatSql(definition, out hasError);
+
+                    if (!hasError)
+                    {
+                        string[] lines = formattedDefinition.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        Regex joinRegex = new Regex("\\b(join)\\b", RegexOptions.IgnoreCase);
+                        Regex onRegex = new Regex("\\b(on)\\b", RegexOptions.IgnoreCase);
+                        Regex wordRegex = new Regex("([a-zA-Z(]+)", RegexOptions.IgnoreCase);
+
+                        sb = new StringBuilder();
+                        foreach (string line in lines)
+                        {
+                            bool hasChanged = false;
+
+                            if (joinRegex.IsMatch(line))
+                            {
+                                string leftStr = line.Substring(line.ToLower().LastIndexOf("join") + 4);
+                                if (!onRegex.IsMatch(line) && !wordRegex.IsMatch(leftStr))
+                                {
+                                    hasChanged = true;
+                                    sb.AppendLine($"{line} ON 1=1 ");
+                                }
+                            }
+
+                            if (!hasChanged)
+                            {
+                                sb.AppendLine(line);
+                            }
+                        }
+
+                        definition = sb.ToString();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                FeedbackInfo info = new FeedbackInfo() { InfoType = FeedbackInfoType.Error, Message = ExceptionHelper.GetExceptionDetails(ex), Owner = this };
+                FeedbackHelper.Feedback(info);
+            } 
+            #endregion
+
             return definition;
         }
 
@@ -434,7 +486,7 @@ namespace DatabaseMigration.Core
             if (mapping != null)
             {
                 DataTypeMappingTarget targetDataType = mapping.Tareget;
-                newDataType = targetDataType.Type;               
+                newDataType = targetDataType.Type;
 
                 if (targetDbType == DatabaseType.MySql)
                 {
@@ -442,11 +494,11 @@ namespace DatabaseMigration.Core
                     {
                         newDataType = "SIGNED";
                     }
-                    else if (upperTypeName == "FLOAT" || upperTypeName == "DOUBLE" || upperTypeName=="NUMBER")
+                    else if (upperTypeName == "FLOAT" || upperTypeName == "DOUBLE" || upperTypeName == "NUMBER")
                     {
                         newDataType = "DECIMAL";
                     }
-                }               
+                }
 
                 if (!hasPrecisionScale && !string.IsNullOrEmpty(targetDataType.Precision) && !string.IsNullOrEmpty(targetDataType.Scale))
                 {
@@ -481,6 +533,15 @@ namespace DatabaseMigration.Core
         private List<TSQL.Tokens.TSQLToken> ParseTokens(string sql)
         {
             return TSQLTokenizer.ParseTokens(sql, true, true);
+        }
+
+        private string FormatSql(string sql, out bool hasError)
+        {
+            hasError = false;
+
+            SqlFormattingManager manager = new SqlFormattingManager();            
+            string formattedSql = manager.Format(sql, ref hasError);
+            return formattedSql;
         }
     }
 }

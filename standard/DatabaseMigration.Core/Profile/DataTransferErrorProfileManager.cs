@@ -8,6 +8,7 @@ namespace DatabaseMigration.Profile
     public class DataTransferErrorProfileManager
     {
         public static string ProfileFolder { get; set; } = "Profiles";
+        private static object obj = new object();
 
         public static string ProfilePath
         {
@@ -36,37 +37,40 @@ $@"<?xml version=""1.0"" encoding=""utf-8""?>
 ");
                     sw.Flush();
                 }
-            }
+            }           
 
-            XDocument doc = XDocument.Load(filePath);
-            XElement root = doc.Root;           
-
-            XElement profileElement = root.Elements("Item").FirstOrDefault(item => 
-            item.Attribute("SourceServer")?.Value == profile.SourceServer &&
-            item.Attribute("SourceDatabase")?.Value == profile.SourceDatabase &&
-            item.Attribute("TargetServer")?.Value == profile.TargetServer &&
-            item.Attribute("TargetDatabase")?.Value == profile.TargetDatabase
-            );
-
-            if (profileElement == null)
+            lock(obj)
             {
-                profileElement = new XElement("Item", 
-                    new XAttribute("SourceServer", profile.SourceServer),
-                    new XAttribute("SourceDatabase", profile.SourceDatabase),
-                    new XAttribute("SourceTableName", profile.SourceTableName),
-                    new XAttribute("TargetServer", profile.TargetServer),
-                    new XAttribute("TargetDatabase", profile.TargetDatabase),
-                    new XAttribute("TargetTableName", profile.TargetTableName)
-                    );
-                root.Add(profileElement);
-            }
-            else
-            {
-                profileElement.Attribute("SourceTableName").Value = profile.SourceTableName;
-                profileElement.Attribute("TargetTableName").Value = profile.TargetTableName;              
-            }          
+                XDocument doc = XDocument.Load(filePath);
+                XElement root = doc.Root;
 
-            doc.Save(filePath);
+                XElement profileElement = root.Elements("Item").FirstOrDefault(item =>
+                item.Attribute("SourceServer")?.Value == profile.SourceServer &&
+                item.Attribute("SourceDatabase")?.Value == profile.SourceDatabase &&
+                item.Attribute("TargetServer")?.Value == profile.TargetServer &&
+                item.Attribute("TargetDatabase")?.Value == profile.TargetDatabase
+                );
+
+                if (profileElement == null)
+                {
+                    profileElement = new XElement("Item",
+                        new XAttribute("SourceServer", profile.SourceServer),
+                        new XAttribute("SourceDatabase", profile.SourceDatabase),
+                        new XAttribute("SourceTableName", profile.SourceTableName),
+                        new XAttribute("TargetServer", profile.TargetServer),
+                        new XAttribute("TargetDatabase", profile.TargetDatabase),
+                        new XAttribute("TargetTableName", profile.TargetTableName)
+                        );
+                    root.Add(profileElement);
+                }
+                else
+                {
+                    profileElement.Attribute("SourceTableName").Value = profile.SourceTableName;
+                    profileElement.Attribute("TargetTableName").Value = profile.TargetTableName;
+                }
+
+                doc.Save(filePath);
+            }           
 
             return true;
         }

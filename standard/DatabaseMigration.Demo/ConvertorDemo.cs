@@ -37,37 +37,39 @@ namespace DatabaseMigration.Demo
             GenerateScriptMode scriptMode = GenerateScriptMode.Schema | GenerateScriptMode.Data;
 
             DbConvetorInfo source = new DbConvetorInfo() { DbInterpreter = sourceInterpreter };
-            DbConvetorInfo target = new DbConvetorInfo() { DbInterpreter = targetInterpreter };
-
-            DbConvertor dbConvertor = new DbConvertor(source, target);
-            dbConvertor.Option.GenerateScriptMode = scriptMode;           
-
-            dbConvertor.Subscribe(this);
-
-            if (sourceDbType == DatabaseType.MySql)
-            {
-                source.DbInterpreter.Option.InQueryItemLimitCount = 2000;
-            }
-
-            if (targetDbType == DatabaseType.SqlServer)
-            {
-                target.DbOwner = "dbo";
-            }
-            else if (targetDbType == DatabaseType.MySql)
-            {
-                target.DbInterpreter.Option.RemoveEmoji = true;
-            }
-            else if (targetDbType == DatabaseType.Oracle)
-            {
-                dbConvertor.Option.SplitScriptsToExecute = true;
-                dbConvertor.Option.ScriptSplitChar = ';';
-            }
-
-            FeedbackHelper.EnableLog = true;           
+            DbConvetorInfo target = new DbConvetorInfo() { DbInterpreter = targetInterpreter };            
 
             try
             {
-                await dbConvertor.Convert();
+                using (DbConvertor dbConvertor = new DbConvertor(source, target))
+                {                    
+                    dbConvertor.Option.GenerateScriptMode = scriptMode;
+
+                    dbConvertor.Subscribe(this);
+
+                    if (sourceDbType == DatabaseType.MySql)
+                    {
+                        source.DbInterpreter.Option.InQueryItemLimitCount = 2000;
+                    }
+
+                    if (targetDbType == DatabaseType.SqlServer)
+                    {
+                        target.DbOwner = "dbo";
+                    }
+                    else if (targetDbType == DatabaseType.MySql)
+                    {
+                        target.DbInterpreter.Option.RemoveEmoji = true;
+                    }
+                    else if (targetDbType == DatabaseType.Oracle)
+                    {
+                        dbConvertor.Option.SplitScriptsToExecute = true;
+                        dbConvertor.Option.ScriptSplitChar = ';';
+                    }
+
+                    FeedbackHelper.EnableLog = true;
+
+                    await dbConvertor.Convert();
+                }                   
             }
             catch (Exception ex)
             {

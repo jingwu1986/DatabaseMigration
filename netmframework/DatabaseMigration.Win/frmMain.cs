@@ -1,19 +1,18 @@
-﻿using System;
+﻿using DatabaseInterpreter.Core;
+using DatabaseInterpreter.Model;
+using DatabaseInterpreter.Profile;
+using DatabaseInterpreter.Utility;
+using DatabaseMigration.Core;
+using DatabaseMigration.Profile;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DatabaseInterpreter.Core;
-using DatabaseInterpreter.Model;
-using DatabaseInterpreter.Profile;
-using DatabaseInterpreter.Utility;
-using DatabaseMigration.Core;
-using DatabaseMigration.Profile;
 
 namespace DatabaseMigration.Win
 {
@@ -424,9 +423,9 @@ namespace DatabaseMigration.Win
                     if (Directory.Exists(outputFolder))
                     {
                         option.ScriptOutputFolder = outputFolder;
-                    }                    
+                    }
                 }
-            }           
+            }
         }
 
         private GenerateScriptMode GetGenerateScriptMode()
@@ -501,52 +500,54 @@ namespace DatabaseMigration.Win
             DbConvetorInfo source = new DbConvetorInfo() { DbInterpreter = DbInterpreterHelper.GetDbInterpreter(sourceDbType, this.sourceDbConnectionInfo, sourceScriptOption) };
             DbConvetorInfo target = new DbConvetorInfo() { DbInterpreter = DbInterpreterHelper.GetDbInterpreter(targetDbType, this.targetDbConnectionInfo, targetScriptOption) };
 
-            DbConvertor dbConvertor = new DbConvertor(source, target);
-            dbConvertor.Option.GenerateScriptMode = scriptMode;
-            dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
-            dbConvertor.Option.ExecuteScriptOnTargetServer = this.chkExecuteOnTarget.Checked;
-
-            dbConvertor.Subscribe(this);
-
-            if (sourceDbType == DatabaseType.MySql)
-            {
-                source.DbInterpreter.Option.InQueryItemLimitCount = 2000;
-            }
-
-            if (targetDbType == DatabaseType.SqlServer)
-            {
-                target.DbOwner = this.txtTargetDbOwner.Text ?? "dbo";
-            }
-            else if (targetDbType == DatabaseType.MySql)
-            {
-                target.DbInterpreter.Option.RemoveEmoji = true;
-            }
-            else if (targetDbType == DatabaseType.Oracle)
-            {
-                dbConvertor.Option.SplitScriptsToExecute = true;
-                dbConvertor.Option.ScriptSplitChar = ';';
-            }
-
-            DataTransferErrorProfile dataErrorProfile = null;
-            if (this.chkPickup.Checked && scriptMode.HasFlag(GenerateScriptMode.Data))
-            {
-                dataErrorProfile = DataTransferErrorProfileManager.GetProfile(this.sourceDbConnectionInfo, this.targetDbConnectionInfo);
-                if (dataErrorProfile != null)
-                {
-                    dbConvertor.Option.PickupTable = new Table() { Owner = schemaInfo.Tables.FirstOrDefault()?.Owner, Name = dataErrorProfile.SourceTableName };
-                }
-            }
-
-            this.btnExecute.Enabled = false;
-            this.btnCancel.Enabled = true;
-
             try
             {
-                await dbConvertor.Convert(schemaInfo, false);
-
-                if (dataErrorProfile != null)
+                using (DbConvertor dbConvertor = new DbConvertor(source, target))
                 {
-                    DataTransferErrorProfileManager.Remove(dataErrorProfile);
+                    dbConvertor.Option.GenerateScriptMode = scriptMode;
+                    dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
+                    dbConvertor.Option.ExecuteScriptOnTargetServer = this.chkExecuteOnTarget.Checked;
+
+                    dbConvertor.Subscribe(this);
+
+                    if (sourceDbType == DatabaseType.MySql)
+                    {
+                        source.DbInterpreter.Option.InQueryItemLimitCount = 2000;
+                    }
+
+                    if (targetDbType == DatabaseType.SqlServer)
+                    {
+                        target.DbOwner = this.txtTargetDbOwner.Text ?? "dbo";
+                    }
+                    else if (targetDbType == DatabaseType.MySql)
+                    {
+                        target.DbInterpreter.Option.RemoveEmoji = true;
+                    }
+                    else if (targetDbType == DatabaseType.Oracle)
+                    {
+                        dbConvertor.Option.SplitScriptsToExecute = true;
+                        dbConvertor.Option.ScriptSplitChar = ';';
+                    }
+
+                    DataTransferErrorProfile dataErrorProfile = null;
+                    if (this.chkPickup.Checked && scriptMode.HasFlag(GenerateScriptMode.Data))
+                    {
+                        dataErrorProfile = DataTransferErrorProfileManager.GetProfile(this.sourceDbConnectionInfo, this.targetDbConnectionInfo);
+                        if (dataErrorProfile != null)
+                        {
+                            dbConvertor.Option.PickupTable = new Table() { Owner = schemaInfo.Tables.FirstOrDefault()?.Owner, Name = dataErrorProfile.SourceTableName };
+                        }
+                    }
+
+                    this.btnExecute.Enabled = false;
+                    this.btnCancel.Enabled = true;
+
+                    await dbConvertor.Convert(schemaInfo, false);
+
+                    if (dataErrorProfile != null && !dbConvertor.HasError)
+                    {
+                        DataTransferErrorProfileManager.Remove(dataErrorProfile);
+                    }                    
                 }
             }
             catch (Exception ex)
@@ -814,7 +815,7 @@ namespace DatabaseMigration.Win
 
         private void btnSaveMessage_Click(object sender, EventArgs e)
         {
-            if(this.dlgSaveLog==null)
+            if (this.dlgSaveLog == null)
             {
                 this.dlgSaveLog = new SaveFileDialog();
             }
@@ -830,7 +831,7 @@ namespace DatabaseMigration.Win
 
         private void btnOutputFolder_Click(object sender, EventArgs e)
         {
-            if(this.dlgOutputFolder==null)
+            if (this.dlgOutputFolder == null)
             {
                 this.dlgOutputFolder = new FolderBrowserDialog();
             }

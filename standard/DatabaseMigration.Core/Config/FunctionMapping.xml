@@ -21,7 +21,7 @@
   </mapping>
   <mapping>
     <SqlServer>SUBSTRING</SqlServer>
-    <MySql>SUBSTRING</MySql>
+    <MySql>SUBSTR,SUBSTRING</MySql>
     <Oracle>SUBSTR</Oracle>
   </mapping>
   <mapping>

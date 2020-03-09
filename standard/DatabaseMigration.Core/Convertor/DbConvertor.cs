@@ -13,10 +13,13 @@ namespace DatabaseMigration.Core
 {
     public delegate void FeedbackHandle(FeedbackInfo info);
 
-    public class DbConvertor
+    public class DbConvertor : IDisposable
     {
         private IObserver<FeedbackInfo> observer;
         private bool hasError = false;
+        private DbConnection dataTransferDbConnection;
+
+        public bool HasError => this.hasError;
 
         public DbConvetorInfo Source { get; set; }
         public DbConvetorInfo Target { get; set; }
@@ -64,8 +67,8 @@ namespace DatabaseMigration.Core
             if (schemaInfo == null || getAllIfNotSpecified)
             {
                 tableNames = (await sourceInterpreter.GetTablesAsync()).Select(item => item.Name).ToArray();
-                userDefinedTypeNames =(await sourceInterpreter.GetUserDefinedTypesAsync()).Select(item => item.Name).ToArray();
-                viewNames =(await sourceInterpreter.GetViewsAsync()).Select(item => item.Name).ToArray();
+                userDefinedTypeNames = (await sourceInterpreter.GetUserDefinedTypesAsync()).Select(item => item.Name).ToArray();
+                viewNames = (await sourceInterpreter.GetViewsAsync()).Select(item => item.Name).ToArray();
             }
             else
             {
@@ -111,7 +114,7 @@ namespace DatabaseMigration.Core
 
             targetSchemaInfo.Columns = ColumnTranslator.Translate(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
 
-            ViewTranslator viewTranslator=new ViewTranslator(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
+            ViewTranslator viewTranslator = new ViewTranslator(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
             targetSchemaInfo.Views = viewTranslator.Translate();
 
             if (this.Option.EnsurePrimaryKeyNameUnique)
@@ -149,42 +152,74 @@ namespace DatabaseMigration.Core
 
                 targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
 
-                if (!this.Option.SplitScriptsToExecute)
+                try
                 {
-                    if (targetInterpreter is SqlServerInterpreter)
+                    if (!this.Option.SplitScriptsToExecute)
                     {
-                        string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-
-                        scriptItems.ToList().ForEach(async item =>
+                        if (targetInterpreter is SqlServerInterpreter)
                         {
-                            await targetInterpreter.ExecuteNonQueryAsync(item);
-                        });
+                            string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+                            scriptItems.ToList().ForEach(async item =>
+                            {
+                                if (!targetInterpreter.HasError)
+                                {
+                                    targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {item}");
+
+                                    await targetInterpreter.ExecuteNonQuery(item);
+                                }
+                            });
+                        }
+                        else
+                        {
+                            targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {script}");
+
+                            await targetInterpreter.ExecuteNonQuery(script);
+                        }
                     }
                     else
                     {
-                        await targetInterpreter.ExecuteNonQueryAsync(script);
-                    }
-                }
-                else
-                {
-                    string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
-                    int count = sqls.Count();
+                        string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+                        int count = sqls.Count();
 
-                    int i = 0;
-                    foreach (string sql in sqls)
-                    {
-                        if (!string.IsNullOrEmpty(sql.Trim()))
+                        int i = 0;
+                        foreach (string sql in sqls)
                         {
-                            i++;
-                            targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}");
-                            await targetInterpreter.ExecuteNonQueryAsync(sql.Trim());
+                            if (!string.IsNullOrEmpty(sql.Trim()))
+                            {
+                                i++;
+
+                                if (!targetInterpreter.HasError)
+                                {
+                                    targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}");
+                                    await targetInterpreter.ExecuteNonQuery(sql.Trim());
+                                }
+                            }
                         }
                     }
                 }
+                catch (Exception ex)
+                {
+                    targetInterpreter.CancelRequested = true;
+
+                    ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
+                    ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
+
+                    SchemaTransferException schemaTransferException = new SchemaTransferException(ex)
+                    {
+                        SourceServer = sourceConnectionInfo.Server,
+                        SourceDatabase = sourceConnectionInfo.Database,
+                        TargetServer = targetConnectionInfo.Server,
+                        TargetDatabase = targetConnectionInfo.Database
+                    };
+
+                    this.HandleError(schemaTransferException);
+                }
+
                 targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
             }
 
-            if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
+            if (!targetInterpreter.HasError && this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
             {
                 List<TableColumn> identityTableColumns = new List<TableColumn>();
                 if (generateIdentity)
@@ -200,13 +235,14 @@ namespace DatabaseMigration.Core
                 sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
                 targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
 
-                using (DbConnection dbConnection = targetInterpreter.GetDbConnector().CreateConnection())
+                this.dataTransferDbConnection = targetInterpreter.GetDbConnector().CreateConnection();
+
                 {
                     identityTableColumns.ForEach(item =>
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(dbConnection, item, false);
+                            targetInterpreter.SetIdentityEnabled(this.dataTransferDbConnection, item, false);
                         }
                     });
 
@@ -245,11 +281,11 @@ namespace DatabaseMigration.Core
                                         {
                                             if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                             {
-                                                await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                                await targetInterpreter.BulkCopyAsync(this.dataTransferDbConnection, dbDataReader, table.Name);
                                             }
                                             else
                                             {
-                                                await targetInterpreter.ExecuteNonQueryAsync(dbConnection, script, paramters, false);
+                                                await targetInterpreter.ExecuteNonQuery(this.dataTransferDbConnection, script, paramters, false);
                                             }
                                         }
                                         else
@@ -262,11 +298,11 @@ namespace DatabaseMigration.Core
                                                 {
                                                     if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                                     {
-                                                        await targetInterpreter.BulkCopyAsync(dbConnection, dbDataReader, table.Name);
+                                                        await targetInterpreter.BulkCopyAsync(this.dataTransferDbConnection, dbDataReader, table.Name);
                                                     }
                                                     else
                                                     {
-                                                        await targetInterpreter.ExecuteNonQueryAsync(dbConnection, sql, paramters, false);
+                                                        await targetInterpreter.ExecuteNonQuery(this.dataTransferDbConnection, sql, paramters, false);
                                                     }
                                                 }
                                             }
@@ -277,13 +313,12 @@ namespace DatabaseMigration.Core
                                 }
                                 catch (Exception ex)
                                 {
-                                    this.hasError = true;
                                     sourceInterpreter.CancelRequested = true;
 
                                     ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
                                     ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
 
-                                    DataTransferException tableDataTransferException = new DataTransferException(ex)
+                                    DataTransferException dataTransferException = new DataTransferException(ex)
                                     {
                                         SourceServer = sourceConnectionInfo.Server,
                                         SourceDatabase = sourceConnectionInfo.Database,
@@ -293,8 +328,7 @@ namespace DatabaseMigration.Core
                                         TargetObject = table.Name
                                     };
 
-                                    string errMsg = ExceptionHelper.GetExceptionDetails(tableDataTransferException);
-                                    this.Feedback(this, errMsg, FeedbackInfoType.Error);
+                                    this.HandleError(dataTransferException);
 
                                     DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
                                     {
@@ -316,11 +350,18 @@ namespace DatabaseMigration.Core
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(dbConnection, item, true);
+                            targetInterpreter.SetIdentityEnabled(this.dataTransferDbConnection, item, true);
                         }
                     });
                 }
             }
+        }
+
+        private void HandleError(MigrationException ex)
+        {
+            this.hasError = true;
+            string errMsg = ExceptionHelper.GetExceptionDetails(ex);
+            this.Feedback(this, errMsg, FeedbackInfoType.Error);
         }
 
         private (Table Table, List<TableColumn> Columns) GetTargetTableColumns(SchemaInfo targetSchemaInfo, string targetOwner, Table sourceTable, List<TableColumn> sourceColumns)
@@ -360,6 +401,15 @@ namespace DatabaseMigration.Core
             if (this.OnFeedback != null)
             {
                 this.OnFeedback(info);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (this.dataTransferDbConnection != null)
+            {
+                this.dataTransferDbConnection.Close();
+                this.dataTransferDbConnection.Dispose();
             }
         }
     }
