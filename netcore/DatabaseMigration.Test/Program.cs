@@ -11,7 +11,7 @@ namespace DatabaseMigration.Test
         static ConnectionInfo mySqlConn = new ConnectionInfo() { Server = "localhost", Database = "northwind", UserId = "sa", Password = "1234" };
         static ConnectionInfo oracleConn = new ConnectionInfo() { Server = "127.0.0.1/orcl", Database = "Northwind", UserId = "C##northwind", Password = "TEST" };
 
-        static GenerateScriptOption option = new GenerateScriptOption()
+        static DbInterpreterOption option = new DbInterpreterOption()
         {
             ScriptOutputMode = GenerateScriptOutputMode.WriteToString | GenerateScriptOutputMode.WriteToFile,
             ScriptOutputFolder = "output"
