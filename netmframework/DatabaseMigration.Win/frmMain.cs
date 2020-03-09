@@ -199,7 +199,7 @@ namespace DatabaseMigration.Win
             this.tvSource.Nodes.Clear();
 
             DatabaseType dbType = this.GetDatabaseType(this.cboSourceDB.Text);
-            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(dbType, this.sourceDbConnectionInfo, new GenerateScriptOption());
+            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(dbType, this.sourceDbConnectionInfo, new DbInterpreterOption());
 
             if (dbInterpreter is SqlServerInterpreter)
             {
@@ -413,12 +413,12 @@ namespace DatabaseMigration.Win
             return true;
         }
 
-        private void SetGenerateScriptOption(params GenerateScriptOption[] options)
+        private void SetGenerateScriptOption(params DbInterpreterOption[] options)
         {
             if (options != null)
             {
                 string outputFolder = this.txtOutputFolder.Text.Trim();
-                foreach (GenerateScriptOption option in options)
+                foreach (DbInterpreterOption option in options)
                 {
                     if (Directory.Exists(outputFolder))
                     {
@@ -473,8 +473,8 @@ namespace DatabaseMigration.Win
             DatabaseType targetDbType = this.GetDatabaseType(this.cboTargetDB.Text);
 
             int dataBatchSize = SettingManager.Setting.DataBatchSize;
-            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.None, DataBatchSize = dataBatchSize };
-            GenerateScriptOption targetScriptOption = new GenerateScriptOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
+            DbInterpreterOption sourceScriptOption = new DbInterpreterOption() { ScriptOutputMode = GenerateScriptOutputMode.None, DataBatchSize = dataBatchSize };
+            DbInterpreterOption targetScriptOption = new DbInterpreterOption() { ScriptOutputMode = (GenerateScriptOutputMode.WriteToString), DataBatchSize = dataBatchSize };
 
             this.SetGenerateScriptOption(sourceScriptOption, targetScriptOption);
 
@@ -656,7 +656,7 @@ namespace DatabaseMigration.Win
             DatabaseType sourceDbType = this.GetDatabaseType(this.cboSourceDB.Text);
 
             int dataBatchSize = SettingManager.Setting.DataBatchSize;
-            GenerateScriptOption sourceScriptOption = new GenerateScriptOption() { ScriptOutputMode = GenerateScriptOutputMode.WriteToFile, DataBatchSize = dataBatchSize };
+            DbInterpreterOption sourceScriptOption = new DbInterpreterOption() { ScriptOutputMode = GenerateScriptOutputMode.WriteToFile, DataBatchSize = dataBatchSize };
 
             this.SetGenerateScriptOption(sourceScriptOption);
 

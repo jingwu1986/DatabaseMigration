@@ -100,7 +100,7 @@ namespace DatabaseMigration.Win
         private async void btnTest_Click(object sender, EventArgs e)
         {
             ConnectionInfo connectionInfo = this.GetConnectionInfo();
-            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(this.DatabaseType, connectionInfo, new GenerateScriptOption());
+            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(this.DatabaseType, connectionInfo, new DbInterpreterOption());
 
             try
             {
