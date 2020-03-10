@@ -140,85 +140,91 @@ namespace DatabaseMigration.Core
             sourceInterpreter.Subscribe(this.observer);
             targetInterpreter.Subscribe(this.observer);
 
+            #region Schema sync
             if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Schema))
             {
-                script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);
+                script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);               
 
-                if (string.IsNullOrEmpty(script))
+                if(this.Option.ExecuteScriptOnTargetServer)
                 {
-                    this.Feedback(targetInterpreter, $"The script to create schema is null.", FeedbackInfoType.Error);
-                    return;
-                }
-
-                targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
-
-                try
-                {
-                    if (!this.Option.SplitScriptsToExecute)
+                    if (string.IsNullOrEmpty(script))
                     {
-                        if (targetInterpreter is SqlServerInterpreter)
+                        this.Feedback(targetInterpreter, $"The script to create schema is empty.", FeedbackInfoType.Error);
+                        return;
+                    }
+
+                    targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
+
+                    try
+                    {
+                        if (!this.Option.SplitScriptsToExecute)
                         {
-                            string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-
-                            scriptItems.ToList().ForEach(async item =>
+                            if (targetInterpreter is SqlServerInterpreter)
                             {
-                                if (!targetInterpreter.HasError)
-                                {
-                                    targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {item}");
+                                string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
-                                    await targetInterpreter.ExecuteNonQuery(item);
-                                }
-                            });
+                                scriptItems.ToList().ForEach(async item =>
+                                {
+                                    if (!targetInterpreter.HasError)
+                                    {
+                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {item}:");
+
+                                        await targetInterpreter.ExecuteNonQuery(item);
+                                    }
+                                });
+                            }
+                            else
+                            {
+                                targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {script}:");
+
+                                await targetInterpreter.ExecuteNonQuery(script);
+                            }
                         }
                         else
                         {
-                            targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {script}");
+                            string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
+                            int count = sqls.Count();
 
-                            await targetInterpreter.ExecuteNonQuery(script);
-                        }
-                    }
-                    else
-                    {
-                        string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
-                        int count = sqls.Count();
-
-                        int i = 0;
-                        foreach (string sql in sqls)
-                        {
-                            if (!string.IsNullOrEmpty(sql.Trim()))
+                            int i = 0;
+                            foreach (string sql in sqls)
                             {
-                                i++;
-
-                                if (!targetInterpreter.HasError)
+                                if (!string.IsNullOrEmpty(sql.Trim()))
                                 {
-                                    targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}");
-                                    await targetInterpreter.ExecuteNonQuery(sql.Trim());
+                                    i++;
+
+                                    if (!targetInterpreter.HasError)
+                                    {
+                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}:");
+                                        await targetInterpreter.ExecuteNonQuery(sql.Trim());
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    targetInterpreter.CancelRequested = true;
-
-                    ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
-                    ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
-
-                    SchemaTransferException schemaTransferException = new SchemaTransferException(ex)
+                    catch (Exception ex)
                     {
-                        SourceServer = sourceConnectionInfo.Server,
-                        SourceDatabase = sourceConnectionInfo.Database,
-                        TargetServer = targetConnectionInfo.Server,
-                        TargetDatabase = targetConnectionInfo.Database
-                    };
+                        targetInterpreter.CancelRequested = true;
 
-                    this.HandleError(schemaTransferException);
-                }
+                        ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
+                        ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
 
-                targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
+                        SchemaTransferException schemaTransferException = new SchemaTransferException(ex)
+                        {
+                            SourceServer = sourceConnectionInfo.Server,
+                            SourceDatabase = sourceConnectionInfo.Database,
+                            TargetServer = targetConnectionInfo.Server,
+                            TargetDatabase = targetConnectionInfo.Database
+                        };
+
+                        this.HandleError(schemaTransferException);
+                    }
+
+                    targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
+                }                
             }
+            #endregion
 
+            #region Data sync
             if (!targetInterpreter.HasError && this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
             {
                 List<TableColumn> identityTableColumns = new List<TableColumn>();
@@ -354,7 +360,8 @@ namespace DatabaseMigration.Core
                         }
                     });
                 }
-            }
+            } 
+            #endregion
         }
 
         private void HandleError(MigrationException ex)
