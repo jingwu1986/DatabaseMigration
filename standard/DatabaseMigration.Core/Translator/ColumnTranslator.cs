@@ -11,15 +11,26 @@ namespace DatabaseMigration.Core
 {
     public class ColumnTranslator
     {
-        public static List<TableColumn> Translate(List<TableColumn> columns, DatabaseType sourceDbType, DatabaseType targetDbType)
+        private List<TableColumn> columns;
+        private DatabaseType sourceDbType;
+        private DatabaseType targetDbType;
+
+        public ColumnTranslator(List<TableColumn> columns, DatabaseType sourceDbType, DatabaseType targetDbType)
         {
-            if (sourceDbType == targetDbType)
+            this.columns = columns;
+            this.sourceDbType = sourceDbType;
+            this.targetDbType = targetDbType;
+        }
+
+        public List<TableColumn> Translate()
+        {
+            if (this.sourceDbType == this.targetDbType)
             {
-                return columns;
+                return this.columns;
             }
 
             string configRootFolder = Path.Combine(PathHelper.GetAssemblyFolder(), "Config");
-            string dataTypeMappingFilePath = Path.Combine(configRootFolder, $"DataTypeMapping/{sourceDbType.ToString()}2{targetDbType.ToString()}.xml");
+            string dataTypeMappingFilePath = Path.Combine(configRootFolder, $"DataTypeMapping/{this.sourceDbType.ToString()}2{this.targetDbType.ToString()}.xml");
             string functionMappingFilePath = Path.Combine(configRootFolder, "FunctionMapping.xml");
 
             #region DataType Mapping
@@ -42,9 +53,9 @@ namespace DatabaseMigration.Core
             .ToList();
             #endregion
 
-            foreach (TableColumn column in columns)
+            foreach (TableColumn column in this.columns)
             {
-                string sourceDataType = GetTrimedDataType(column);
+                string sourceDataType = this.GetTrimedDataType(column);
                 column.DataType = sourceDataType;
                 DataTypeMapping dataTypeMapping = dataTypeMappings.FirstOrDefault(item => item.Source.Type?.ToLower() == column.DataType?.ToLower());
                 if (dataTypeMapping != null)
@@ -78,7 +89,7 @@ namespace DatabaseMigration.Core
 
                         if (!hasSpecial && column.DataType.ToLower().StartsWith("n")) //nchar,nvarchar
                         {
-                            if (column.MaxLength > 0 && (!sourceDataType.ToLower().StartsWith("n") || targetDbType == DatabaseType.MySql)) //MySql doesn't have nvarchar
+                            if (column.MaxLength > 0 && (!sourceDataType.ToLower().StartsWith("n") || this.targetDbType == DatabaseType.MySql)) //MySql doesn't have nvarchar
                             {
                                 column.MaxLength = column.MaxLength / 2;
                             }
@@ -122,11 +133,11 @@ namespace DatabaseMigration.Core
 
                 if (!string.IsNullOrEmpty(column.DefaultValue))
                 {
-                    string defaultValue = GetTrimedDefaultValue(column.DefaultValue);
-                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == sourceDbType.ToString() && t.Function.Split(',').Any(m=> m.Trim().ToLower() == defaultValue.Trim().ToLower())));
+                    string defaultValue = this.GetTrimedDefaultValue(column.DefaultValue);
+                    IEnumerable<FunctionMapping> funcMappings = functionMappings.FirstOrDefault(item => item.Any(t => t.DbType == this.sourceDbType.ToString() && t.Function.Split(',').Any(m=> m.Trim().ToLower() == defaultValue.Trim().ToLower())));
                     if (funcMappings != null)
                     {
-                        defaultValue = funcMappings.FirstOrDefault(item => item.DbType == targetDbType.ToString())?.Function.Split(',')?.FirstOrDefault();
+                        defaultValue = funcMappings.FirstOrDefault(item => item.DbType == this.targetDbType.ToString())?.Function.Split(',')?.FirstOrDefault();
                     }
                     column.DefaultValue = defaultValue;
                 }
@@ -135,7 +146,7 @@ namespace DatabaseMigration.Core
             return columns;
         }
 
-        private static string GetTrimedDataType(TableColumn column)
+        private string GetTrimedDataType(TableColumn column)
         {
             string dataType = column.DataType;
             int index = dataType.IndexOf("(");
@@ -146,7 +157,7 @@ namespace DatabaseMigration.Core
             return dataType;
         }
 
-        private static string GetTrimedDefaultValue(string defaultValue)
+        private string GetTrimedDefaultValue(string defaultValue)
         {
             if (!string.IsNullOrEmpty(defaultValue))
             {
@@ -158,18 +169,6 @@ namespace DatabaseMigration.Core
                 return defaultValue;
             }
             return defaultValue;
-        }
-
-        private static string GetQuotedDefaultValue(string defaultValue)
-        {
-            if (!string.IsNullOrEmpty(defaultValue))
-            {
-                if (!(defaultValue.StartsWith("(") && defaultValue.EndsWith(")")))
-                {
-                    return "(" + defaultValue + ")";
-                }
-            }
-            return defaultValue;
-        }
+        }       
     }
 }

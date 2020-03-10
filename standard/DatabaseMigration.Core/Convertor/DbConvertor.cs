@@ -16,8 +16,7 @@ namespace DatabaseMigration.Core
     public class DbConvertor : IDisposable
     {
         private IObserver<FeedbackInfo> observer;
-        private bool hasError = false;
-        private DbConnection dataTransferDbConnection;
+        private bool hasError = false;      
 
         public bool HasError => this.hasError;
 
@@ -112,7 +111,8 @@ namespace DatabaseMigration.Core
                 SchemaInfoHelper.TransformOwner(targetSchemaInfo, this.Target.DbOwner);
             }
 
-            targetSchemaInfo.Columns = ColumnTranslator.Translate(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
+            ColumnTranslator columnTranslator = new ColumnTranslator(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
+            targetSchemaInfo.Columns = columnTranslator.Translate();
 
             ViewTranslator viewTranslator = new ViewTranslator(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
             targetSchemaInfo.Views = viewTranslator.Translate();
@@ -167,17 +167,17 @@ namespace DatabaseMigration.Core
                                 {
                                     if (!targetInterpreter.HasError)
                                     {
-                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {item}:");
+                                        targetInterpreter.Feedback(FeedbackInfoType.Info, item);
 
-                                        await targetInterpreter.ExecuteNonQuery(item);
+                                        await targetInterpreter.ExecuteNonQueryAsync(item);
                                     }
                                 });
                             }
                             else
                             {
-                                targetInterpreter.Feedback(FeedbackInfoType.Info, $"executing {script}:");
+                                targetInterpreter.Feedback(FeedbackInfoType.Info, script);
 
-                                await targetInterpreter.ExecuteNonQuery(script);
+                                await targetInterpreter.ExecuteNonQueryAsync(script);
                             }
                         }
                         else
@@ -194,8 +194,8 @@ namespace DatabaseMigration.Core
 
                                     if (!targetInterpreter.HasError)
                                     {
-                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing {sql}:");
-                                        await targetInterpreter.ExecuteNonQuery(sql.Trim());
+                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing:{Environment.NewLine} {sql}");
+                                        await targetInterpreter.ExecuteNonQueryAsync(sql.Trim());
                                     }
                                 }
                             }
@@ -238,23 +238,30 @@ namespace DatabaseMigration.Core
                     sourceSchemaInfo.PickupTable = this.Option.PickupTable;
                 }
 
-                sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
-                targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+                if(sourceInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+                {
+                    sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+                }
+                
+                if(targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+                {
+                    targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+                }               
 
-                this.dataTransferDbConnection = targetInterpreter.GetDbConnector().CreateConnection();
-
+                using (DbConnection dataTransferDbConnection = targetInterpreter.GetDbConnector().CreateConnection())
                 {
                     identityTableColumns.ForEach(item =>
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(this.dataTransferDbConnection, item, false);
+                            targetInterpreter.SetIdentityEnabled(dataTransferDbConnection, item, false);
                         }
                     });
 
                     if (this.Option.ExecuteScriptOnTargetServer || targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
                     {
-                        sourceInterpreter.OnDataRead += async (table, columns, data, dbDataReader) =>
+
+                        sourceInterpreter.OnDataRead += async (table, columns, data, dataTable) =>
                         {
                             if (!this.hasError)
                             {
@@ -287,11 +294,11 @@ namespace DatabaseMigration.Core
                                         {
                                             if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                             {
-                                                await targetInterpreter.BulkCopyAsync(this.dataTransferDbConnection, dbDataReader, table.Name);
+                                                await targetInterpreter.BulkCopyAsync(dataTransferDbConnection, dataTable, table.Name);
                                             }
                                             else
                                             {
-                                                await targetInterpreter.ExecuteNonQuery(this.dataTransferDbConnection, script, paramters, false);
+                                                await targetInterpreter.ExecuteNonQueryAsync(dataTransferDbConnection, script, paramters, false);
                                             }
                                         }
                                         else
@@ -304,11 +311,11 @@ namespace DatabaseMigration.Core
                                                 {
                                                     if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                                     {
-                                                        await targetInterpreter.BulkCopyAsync(this.dataTransferDbConnection, dbDataReader, table.Name);
+                                                        await targetInterpreter.BulkCopyAsync(dataTransferDbConnection, dataTable, table.Name);
                                                     }
                                                     else
                                                     {
-                                                        await targetInterpreter.ExecuteNonQuery(this.dataTransferDbConnection, sql, paramters, false);
+                                                        await targetInterpreter.ExecuteNonQueryAsync(dataTransferDbConnection, sql, paramters, false);
                                                     }
                                                 }
                                             }
@@ -356,7 +363,7 @@ namespace DatabaseMigration.Core
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(this.dataTransferDbConnection, item, true);
+                            targetInterpreter.SetIdentityEnabled(dataTransferDbConnection, item, true);
                         }
                     });
                 }
@@ -401,7 +408,7 @@ namespace DatabaseMigration.Core
                 this.hasError = true;
             }
 
-            FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = content, Owner = owner };
+            FeedbackInfo info = new FeedbackInfo() { InfoType = infoType, Message = StringHelper.ToSingleEmptyLine(content), Owner = owner };
 
             FeedbackHelper.Feedback(this.observer, info, enableLog);
 
@@ -413,11 +420,8 @@ namespace DatabaseMigration.Core
 
         public void Dispose()
         {
-            if (this.dataTransferDbConnection != null)
-            {
-                this.dataTransferDbConnection.Close();
-                this.dataTransferDbConnection.Dispose();
-            }
+            this.Source = null;
+            this.Target = null;
         }
     }
 }

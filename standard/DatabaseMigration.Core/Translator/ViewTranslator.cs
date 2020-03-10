@@ -297,7 +297,7 @@ namespace DatabaseMigration.Core
             } 
             #endregion
 
-            return definition;
+            return definition.Trim();
         }
 
         private string HandleDefinition(string definition, List<TSQLToken> tokens, out bool changed)
