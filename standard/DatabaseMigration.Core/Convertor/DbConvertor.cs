@@ -16,7 +16,7 @@ namespace DatabaseMigration.Core
     public class DbConvertor : IDisposable
     {
         private IObserver<FeedbackInfo> observer;
-        private bool hasError = false;      
+        private bool hasError = false;
 
         public bool HasError => this.hasError;
 
@@ -48,12 +48,12 @@ namespace DatabaseMigration.Core
             this.observer = observer;
         }
 
-        public Task Convert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
+        public Task Convert(SchemaInfo schemaInfo = null)
         {
-            return this.InternalConvert(schemaInfo, getAllIfNotSpecified);
+            return this.InternalConvert(schemaInfo);
         }
 
-        private async Task InternalConvert(SchemaInfo schemaInfo = null, bool getAllIfNotSpecified = true)
+        private async Task InternalConvert(SchemaInfo schemaInfo = null)
         {
             DbInterpreter sourceInterpreter = this.Source.DbInterpreter;
 
@@ -63,7 +63,7 @@ namespace DatabaseMigration.Core
             string[] userDefinedTypeNames = null;
             string[] viewNames = null;
 
-            if (schemaInfo == null || getAllIfNotSpecified)
+            if (schemaInfo == null)
             {
                 tableNames = (await sourceInterpreter.GetTablesAsync()).Select(item => item.Name).ToArray();
                 userDefinedTypeNames = (await sourceInterpreter.GetUserDefinedTypesAsync()).Select(item => item.Name).ToArray();
@@ -83,7 +83,7 @@ namespace DatabaseMigration.Core
                 ViewNames = viewNames
             };
 
-            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(selectionInfo, getAllIfNotSpecified);
+            SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(selectionInfo);
 
             #region Set data type by user define type          
 
@@ -91,7 +91,7 @@ namespace DatabaseMigration.Core
 
             if (utypes != null && utypes.Count > 0)
             {
-                foreach (TableColumn column in sourceSchemaInfo.Columns)
+                foreach (TableColumn column in sourceSchemaInfo.TableColumns)
                 {
                     UserDefinedType utype = utypes.FirstOrDefault(item => item.Name == column.DataType);
                     if (utype != null)
@@ -111,8 +111,8 @@ namespace DatabaseMigration.Core
                 SchemaInfoHelper.TransformOwner(targetSchemaInfo, this.Target.DbOwner);
             }
 
-            ColumnTranslator columnTranslator = new ColumnTranslator(targetSchemaInfo.Columns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
-            targetSchemaInfo.Columns = columnTranslator.Translate();
+            ColumnTranslator columnTranslator = new ColumnTranslator(targetSchemaInfo.TableColumns, this.Source.DbInterpreter.DatabaseType, this.Target.DbInterpreter.DatabaseType);
+            targetSchemaInfo.TableColumns = columnTranslator.Translate();
 
             ViewTranslator viewTranslator = new ViewTranslator(targetSchemaInfo.Views, sourceInterpreter, this.Target.DbInterpreter, this.Target.DbOwner);
             targetSchemaInfo.Views = viewTranslator.Translate();
@@ -143,9 +143,9 @@ namespace DatabaseMigration.Core
             #region Schema sync
             if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Schema))
             {
-                script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);               
+                script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);
 
-                if(this.Option.ExecuteScriptOnTargetServer)
+                if (this.Option.ExecuteScriptOnTargetServer)
                 {
                     if (string.IsNullOrEmpty(script))
                     {
@@ -220,7 +220,7 @@ namespace DatabaseMigration.Core
                     }
 
                     targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
-                }                
+                }
             }
             #endregion
 
@@ -230,7 +230,7 @@ namespace DatabaseMigration.Core
                 List<TableColumn> identityTableColumns = new List<TableColumn>();
                 if (generateIdentity)
                 {
-                    identityTableColumns = targetSchemaInfo.Columns.Where(item => item.IsIdentity).ToList();
+                    identityTableColumns = targetSchemaInfo.TableColumns.Where(item => item.IsIdentity).ToList();
                 }
 
                 if (this.Option.PickupTable != null)
@@ -238,15 +238,15 @@ namespace DatabaseMigration.Core
                     sourceSchemaInfo.PickupTable = this.Option.PickupTable;
                 }
 
-                if(sourceInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+                if (sourceInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
                 {
                     sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
                 }
-                
-                if(targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+
+                if (targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
                 {
                     targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
-                }               
+                }
 
                 using (DbConnection dataTransferDbConnection = targetInterpreter.GetDbConnector().CreateConnection())
                 {
@@ -367,7 +367,7 @@ namespace DatabaseMigration.Core
                         }
                     });
                 }
-            } 
+            }
             #endregion
         }
 
@@ -390,7 +390,7 @@ namespace DatabaseMigration.Core
             List<TableColumn> targetTableColumns = new List<TableColumn>();
             foreach (TableColumn sourceColumn in sourceColumns)
             {
-                TableColumn targetTableColumn = targetSchemaInfo.Columns.FirstOrDefault(item => (item.Owner == targetOwner || string.IsNullOrEmpty(targetOwner)) && item.TableName == sourceColumn.TableName && item.ColumnName == sourceColumn.ColumnName);
+                TableColumn targetTableColumn = targetSchemaInfo.TableColumns.FirstOrDefault(item => (item.Owner == targetOwner || string.IsNullOrEmpty(targetOwner)) && item.TableName == sourceColumn.TableName && item.Name == sourceColumn.Name);
                 if (targetTableColumn == null)
                 {
                     this.Feedback(this, $"Source column {sourceColumn.TableName} of table {sourceColumn.TableName} cannot get a target column.", FeedbackInfoType.Error);
