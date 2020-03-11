@@ -199,7 +199,8 @@ namespace DatabaseMigration
             this.tvSource.Nodes.Clear();
 
             DatabaseType dbType = this.GetDatabaseType(this.cboSourceDB.Text);
-            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(dbType, this.sourceDbConnectionInfo, new DbInterpreterOption());
+            DbInterpreterOption option = new DbInterpreterOption() { ObjectFetchMode = DatabaseObjectFetchMode.Simple };
+            DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(dbType, this.sourceDbConnectionInfo, option);
 
             if (dbInterpreter is SqlServerInterpreter)
             {
@@ -542,7 +543,7 @@ namespace DatabaseMigration
                     this.btnExecute.Enabled = false;
                     this.btnCancel.Enabled = true;
 
-                    await dbConvertor.Convert(schemaInfo, false);
+                    await dbConvertor.Convert(schemaInfo);
 
                     if (dataErrorProfile != null && !dbConvertor.HasError)
                     {
@@ -679,7 +680,7 @@ namespace DatabaseMigration
                 ViewNames = viewNames
             };
 
-            schemaInfo = await dbInterpreter.GetSchemaInfoAsync(selectionInfo, false);
+            schemaInfo = await dbInterpreter.GetSchemaInfoAsync(selectionInfo);
 
             dbInterpreter.Subscribe(this);
 
