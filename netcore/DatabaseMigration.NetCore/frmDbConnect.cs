@@ -24,22 +24,22 @@ namespace DatabaseMigration
         public ConnectionInfo ConnectionInfo { get; set; }
 
         private bool requriePassword = false;
-        private bool isAdd = true;       
+        private bool isAdd = true;
 
         public frmDbConnect(DatabaseType dbType)
         {
             this.isAdd = true;
             this.DatabaseType = dbType;
-            this.Init();           
+            this.Init();
         }
 
-        public frmDbConnect(DatabaseType dbType, string profileName, bool requriePassword=false)
+        public frmDbConnect(DatabaseType dbType, string profileName, bool requriePassword = false)
         {
             this.isAdd = false;
             this.requriePassword = requriePassword;
             this.DatabaseType = dbType;
             this.ProflieName = profileName;
-            this.Init();      
+            this.Init();
         }
 
         private void Init()
@@ -49,7 +49,7 @@ namespace DatabaseMigration
 
             if (string.IsNullOrEmpty(this.ProflieName))
             {
-                this.txtProfileName.Text = "";                     
+                this.txtProfileName.Text = "";
             }
             else
             {
@@ -61,30 +61,30 @@ namespace DatabaseMigration
 
         private void SetControlStatus()
         {
-            if(this.DatabaseType==DatabaseType.MySql)
+            if (this.DatabaseType == DatabaseType.MySql)
             {
                 this.lblPort.Visible = this.txtPort.Visible = true;
                 this.txtPort.Text = "3306";
             }
 
-            if(this.DatabaseType!=DatabaseType.SqlServer)
+            if (this.DatabaseType != DatabaseType.SqlServer)
             {
                 this.cboAuthentication.Enabled = false;
             }
         }
-        
+
         private void LoadProfile()
         {
-            ConnectionInfo connectionInfo= ConnectionInfoProfileManager.GetConnectionInfo(this.DatabaseType, this.ProflieName);
-           
+            ConnectionInfo connectionInfo = ConnectionInfoProfileManager.GetConnectionInfo(this.DatabaseType, this.ProflieName);
+
             this.txtServerName.Text = connectionInfo.Server;
             this.txtPort.Text = connectionInfo.Port;
             this.cboAuthentication.Text = connectionInfo.IntegratedSecurity ? AuthenticationType.Windows.ToString() : AuthenticationType.Password.ToString();
             this.txtUserId.Text = connectionInfo.UserId;
             this.txtPassword.Text = connectionInfo.Password;
-            this.cboDatabase.Text = connectionInfo.Database;           
+            this.cboDatabase.Text = connectionInfo.Database;
 
-            if(connectionInfo.IntegratedSecurity)
+            if (connectionInfo.IntegratedSecurity)
             {
                 this.cboAuthentication.Text = AuthenticationType.Windows.ToString();
             }
@@ -98,27 +98,29 @@ namespace DatabaseMigration
         }
 
         private async void btnTest_Click(object sender, EventArgs e)
-        {           
+        {
             ConnectionInfo connectionInfo = this.GetConnectionInfo();
             DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(this.DatabaseType, connectionInfo, new DbInterpreterOption());
 
+            string oldDatabase = this.cboDatabase.Text;
+
             try
-            {               
+            {
                 using (DbConnection dbConnection = dbInterpreter.GetDbConnector().CreateConnection())
                 {
                     dbConnection.Open();
 
                     MessageBox.Show("Success.");
 
-                    if(string.IsNullOrEmpty(this.cboDatabase.Text.Trim()))
+                    this.cboDatabase.Items.Clear();
+
+                    List<Database> databaseses = await dbInterpreter.GetDatabasesAsync();
+                    databaseses.ForEach(item =>
                     {
-                        this.cboDatabase.Items.Clear();
-                        List<Database> databaseses = await dbInterpreter.GetDatabasesAsync();
-                        databaseses.ForEach(item =>
-                        {
-                            this.cboDatabase.Items.Add(item.Name);
-                        });
-                    }                    
+                        this.cboDatabase.Items.Add(item.Name);
+                    });
+
+                    this.cboDatabase.Text = oldDatabase;
                 }
             }
             catch (Exception ex)
@@ -136,13 +138,13 @@ namespace DatabaseMigration
                 IntegratedSecurity = this.cboAuthentication.Text != AuthenticationType.Password.ToString(),
                 UserId = this.txtUserId.Text.Trim(),
                 Password = this.txtPassword.Text.Trim(),
-                Database= this.cboDatabase.Text
+                Database = this.cboDatabase.Text
             };
-        }      
+        }
 
         private void frmDbConnect_Load(object sender, EventArgs e)
-        {                       
-        }       
+        {
+        }
 
         private void btnConfirm_Click(object sender, EventArgs e)
         {
@@ -171,7 +173,7 @@ namespace DatabaseMigration
                 }
             }
 
-            ConnectionInfoProfile profile = new ConnectionInfoProfile() { Name= profileName, DbType=this.DatabaseType, ConnectionInfo= this.ConnectionInfo, RememberPassword=this.chkRememberPassword.Checked};
+            ConnectionInfoProfile profile = new ConnectionInfoProfile() { Name = profileName, DbType = this.DatabaseType, ConnectionInfo = this.ConnectionInfo, RememberPassword = this.chkRememberPassword.Checked };
             this.ProflieName = ConnectionInfoProfileManager.Save(profile);
             this.DialogResult = DialogResult.OK;
         }
@@ -184,7 +186,7 @@ namespace DatabaseMigration
             this.txtPassword.Enabled = !isWindowsAuth;
             this.chkRememberPassword.Enabled = !isWindowsAuth;
 
-            if(!isWindowsAuth)
+            if (!isWindowsAuth)
             {
                 this.txtUserId.Text = this.txtPassword.Text = "";
                 this.chkRememberPassword.Checked = false;

@@ -4,9 +4,11 @@ using DatabaseInterpreter.Utility;
 using DatabaseMigration.Profile;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DatabaseMigration.Core
@@ -15,10 +17,15 @@ namespace DatabaseMigration.Core
 
     public class DbConvertor : IDisposable
     {
-        private IObserver<FeedbackInfo> observer;
         private bool hasError = false;
+        private bool isBusy = false;
+        private bool cancelRequested = false;
+        private IObserver<FeedbackInfo> observer;
+        private DbTransaction transaction = null;
 
         public bool HasError => this.hasError;
+        public bool IsBusy => this.isBusy;
+        public bool CancelRequested => this.cancelRequested;
 
         public DbConvetorInfo Source { get; set; }
         public DbConvetorInfo Target { get; set; }
@@ -27,10 +34,14 @@ namespace DatabaseMigration.Core
 
         public event FeedbackHandle OnFeedback;
 
+        public CancellationTokenSource CancellationTokenSource { get; private set; }
+
         public DbConvertor(DbConvetorInfo source, DbConvetorInfo target)
         {
             this.Source = source;
             this.Target = target;
+
+            this.Init();
         }
 
         public DbConvertor(DbConvetorInfo source, DbConvetorInfo target, DbConvertorOption option)
@@ -41,6 +52,13 @@ namespace DatabaseMigration.Core
             {
                 this.Option = option;
             }
+
+            this.Init();
+        }
+
+        private void Init()
+        {
+            this.CancellationTokenSource = new CancellationTokenSource();
         }
 
         public void Subscribe(IObserver<FeedbackInfo> observer)
@@ -59,29 +77,14 @@ namespace DatabaseMigration.Core
 
             sourceInterpreter.Option.TreatBytesAsNullForScript = true;
 
-            string[] tableNames = null;
-            string[] userDefinedTypeNames = null;
-            string[] viewNames = null;
+            SelectionInfo selectionInfo = new SelectionInfo();
 
-            if (schemaInfo == null)
+            if (schemaInfo != null)
             {
-                tableNames = (await sourceInterpreter.GetTablesAsync()).Select(item => item.Name).ToArray();
-                userDefinedTypeNames = (await sourceInterpreter.GetUserDefinedTypesAsync()).Select(item => item.Name).ToArray();
-                viewNames = (await sourceInterpreter.GetViewsAsync()).Select(item => item.Name).ToArray();
+                selectionInfo.UserDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
+                selectionInfo.TableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
+                selectionInfo.ViewNames = schemaInfo.Views.Select(item => item.Name).ToArray();
             }
-            else
-            {
-                tableNames = schemaInfo.Tables.Select(t => t.Name).ToArray();
-                userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
-                viewNames = schemaInfo.Views.Select(item => item.Name).ToArray();
-            }
-
-            SelectionInfo selectionInfo = new SelectionInfo()
-            {
-                UserDefinedTypeNames = userDefinedTypeNames,
-                TableNames = tableNames,
-                ViewNames = viewNames
-            };
 
             SchemaInfo sourceSchemaInfo = await sourceInterpreter.GetSchemaInfoAsync(selectionInfo);
 
@@ -140,127 +143,126 @@ namespace DatabaseMigration.Core
             sourceInterpreter.Subscribe(this.observer);
             targetInterpreter.Subscribe(this.observer);
 
-            #region Schema sync
-            if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Schema))
+            DataTransferErrorProfile dataErrorProfile = null;
+
+            using (DbConnection dbConnection = targetInterpreter.GetDbConnector().CreateConnection())
             {
-                script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);
+                this.isBusy = true;
 
-                if (this.Option.ExecuteScriptOnTargetServer)
+                if (this.Option.UseTransaction)
                 {
-                    if (string.IsNullOrEmpty(script))
-                    {
-                        this.Feedback(targetInterpreter, $"The script to create schema is empty.", FeedbackInfoType.Error);
-                        return;
-                    }
+                    dbConnection.Open();
+                    this.transaction = dbConnection.BeginTransaction();
+                }
 
-                    targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
+                #region Schema sync
+                if (this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Schema))
+                {
+                    script = targetInterpreter.GenerateSchemaScripts(targetSchemaInfo);
 
-                    try
+                    if (this.Option.ExecuteScriptOnTargetServer)
                     {
-                        if (!this.Option.SplitScriptsToExecute)
+                        if (string.IsNullOrEmpty(script))
                         {
-                            if (targetInterpreter is SqlServerInterpreter)
-                            {
-                                string[] scriptItems = script.Split(new string[] { "GO" + Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                            this.Feedback(targetInterpreter, $"The script to create schema is empty.", FeedbackInfoType.Error);
+                            return;
+                        }
 
-                                scriptItems.ToList().ForEach(async item =>
-                                {
-                                    if (!targetInterpreter.HasError)
-                                    {
-                                        targetInterpreter.Feedback(FeedbackInfoType.Info, item);
+                        targetInterpreter.Feedback(FeedbackInfoType.Info, "Begin to sync schema...");
 
-                                        await targetInterpreter.ExecuteNonQueryAsync(item);
-                                    }
-                                });
-                            }
-                            else
+                        try
+                        {
+                            if (!this.Option.SplitScriptsToExecute)
                             {
                                 targetInterpreter.Feedback(FeedbackInfoType.Info, script);
 
-                                await targetInterpreter.ExecuteNonQueryAsync(script);
+                                await targetInterpreter.ExecuteNonQueryAsync(dbConnection, this.GetCommandInfo(script, null, this.transaction));
                             }
-                        }
-                        else
-                        {
-                            string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
-                            int count = sqls.Count();
-
-                            int i = 0;
-                            foreach (string sql in sqls)
+                            else
                             {
-                                if (!string.IsNullOrEmpty(sql.Trim()))
-                                {
-                                    i++;
+                                string[] sqls = script.Split(new string[] { targetInterpreter.ScriptsSplitString }, StringSplitOptions.RemoveEmptyEntries);
+                                int count = sqls.Count();
 
-                                    if (!targetInterpreter.HasError)
+                                int i = 0;
+                                foreach (string sql in sqls)
+                                {
+                                    if (!string.IsNullOrEmpty(sql.Trim()))
                                     {
-                                        targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing:{Environment.NewLine} {sql}");
-                                        await targetInterpreter.ExecuteNonQueryAsync(sql.Trim());
+                                        i++;
+
+                                        if (!targetInterpreter.HasError)
+                                        {
+                                            targetInterpreter.Feedback(FeedbackInfoType.Info, $"({i}/{count}), executing:{Environment.NewLine} {sql}");
+                                            await targetInterpreter.ExecuteNonQueryAsync(dbConnection, this.GetCommandInfo(sql.Trim(), null, transaction));
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        targetInterpreter.CancelRequested = true;
-
-                        ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
-                        ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
-
-                        SchemaTransferException schemaTransferException = new SchemaTransferException(ex)
+                        catch (Exception ex)
                         {
-                            SourceServer = sourceConnectionInfo.Server,
-                            SourceDatabase = sourceConnectionInfo.Database,
-                            TargetServer = targetConnectionInfo.Server,
-                            TargetDatabase = targetConnectionInfo.Database
-                        };
+                            targetInterpreter.CancelRequested = true;
 
-                        this.HandleError(schemaTransferException);
+                            this.Rollback();
+
+                            ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
+                            ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
+
+                            SchemaTransferException schemaTransferException = new SchemaTransferException(ex)
+                            {
+                                SourceServer = sourceConnectionInfo.Server,
+                                SourceDatabase = sourceConnectionInfo.Database,
+                                TargetServer = targetConnectionInfo.Server,
+                                TargetDatabase = targetConnectionInfo.Database
+                            };
+
+                            this.HandleError(schemaTransferException);
+                        }
+
+                        targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
+                    }
+                }
+                #endregion
+
+                #region Data sync
+                if (!targetInterpreter.HasError && this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
+                {
+                    List<TableColumn> identityTableColumns = new List<TableColumn>();
+                    if (generateIdentity)
+                    {
+                        identityTableColumns = targetSchemaInfo.TableColumns.Where(item => item.IsIdentity).ToList();
                     }
 
-                    targetInterpreter.Feedback(FeedbackInfoType.Info, "End sync schema.");
-                }
-            }
-            #endregion
+                    if (this.Option.PickupTable)
+                    {                      
+                        dataErrorProfile = DataTransferErrorProfileManager.GetProfile(sourceInterpreter.ConnectionInfo, targetInterpreter.ConnectionInfo);
 
-            #region Data sync
-            if (!targetInterpreter.HasError && this.Option.GenerateScriptMode.HasFlag(GenerateScriptMode.Data) && sourceSchemaInfo.Tables.Count > 0)
-            {
-                List<TableColumn> identityTableColumns = new List<TableColumn>();
-                if (generateIdentity)
-                {
-                    identityTableColumns = targetSchemaInfo.TableColumns.Where(item => item.IsIdentity).ToList();
-                }
+                        if (dataErrorProfile != null)
+                        {
+                            sourceSchemaInfo.PickupTable  = new Table() { Owner = schemaInfo.Tables.FirstOrDefault()?.Owner, Name = dataErrorProfile.SourceTableName };
+                        }                        
+                    }
 
-                if (this.Option.PickupTable != null)
-                {
-                    sourceSchemaInfo.PickupTable = this.Option.PickupTable;
-                }
+                    if (sourceInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+                    {
+                        sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+                    }
 
-                if (sourceInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
-                {
-                    sourceInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
-                }
+                    if (targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
+                    {
+                        targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
+                    }
 
-                if (targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
-                {
-                    targetInterpreter.AppendScriptsToFile("", GenerateScriptMode.Data, true);
-                }
-
-                using (DbConnection dataTransferDbConnection = targetInterpreter.GetDbConnector().CreateConnection())
-                {
-                    identityTableColumns.ForEach(item =>
+                    foreach (var item in identityTableColumns)
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(dataTransferDbConnection, item, false);
+                            await targetInterpreter.SetIdentityEnabled(dbConnection, item, false);
                         }
-                    });
+                    }
 
                     if (this.Option.ExecuteScriptOnTargetServer || targetInterpreter.Option.ScriptOutputMode.HasFlag(GenerateScriptOutputMode.WriteToFile))
                     {
-
                         sourceInterpreter.OnDataRead += async (table, columns, data, dataTable) =>
                         {
                             if (!this.hasError)
@@ -278,48 +280,18 @@ namespace DatabaseMigration.Core
 
                                     Dictionary<string, object> paramters = targetInterpreter.AppendDataScripts(sb, targetTableAndColumns.Table, targetTableAndColumns.Columns, new Dictionary<long, List<Dictionary<string, object>>>() { { 1, data } });
 
-                                    try
-                                    {
-                                        script = sb.ToString();
-                                        sb.Clear();
-                                    }
-                                    catch (OutOfMemoryException)
-                                    {
-                                        sb.Clear();
-                                    }
+                                    script = sb.ToString().Trim().Trim(';');
 
                                     if (this.Option.ExecuteScriptOnTargetServer)
                                     {
-                                        if (!this.Option.SplitScriptsToExecute)
+                                        if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
                                         {
-                                            if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
-                                            {
-                                                await targetInterpreter.BulkCopyAsync(dataTransferDbConnection, dataTable, table.Name);
-                                            }
-                                            else
-                                            {
-                                                await targetInterpreter.ExecuteNonQueryAsync(dataTransferDbConnection, script, paramters, false);
-                                            }
+                                            await targetInterpreter.BulkCopyAsync(dbConnection, dataTable, table.Name);
                                         }
                                         else
                                         {
-                                            string[] sqls = script.Split(new char[] { this.Option.ScriptSplitChar }, StringSplitOptions.RemoveEmptyEntries);
-
-                                            foreach (string sql in sqls)
-                                            {
-                                                if (!string.IsNullOrEmpty(sql.Trim()))
-                                                {
-                                                    if (this.Option.BulkCopy && targetInterpreter.SupportBulkCopy)
-                                                    {
-                                                        await targetInterpreter.BulkCopyAsync(dataTransferDbConnection, dataTable, table.Name);
-                                                    }
-                                                    else
-                                                    {
-                                                        await targetInterpreter.ExecuteNonQueryAsync(dataTransferDbConnection, sql, paramters, false);
-                                                    }
-                                                }
-                                            }
-                                        }
+                                            await targetInterpreter.ExecuteNonQueryAsync(dbConnection, this.GetCommandInfo(script, paramters, this.transaction));
+                                        }                                      
 
                                         targetInterpreter.FeedbackInfo($"Table \"{table.Name}\":{data.Count} records transferred.");
                                     }
@@ -327,6 +299,8 @@ namespace DatabaseMigration.Core
                                 catch (Exception ex)
                                 {
                                     sourceInterpreter.CancelRequested = true;
+
+                                    this.Rollback();
 
                                     ConnectionInfo sourceConnectionInfo = sourceInterpreter.ConnectionInfo;
                                     ConnectionInfo targetConnectionInfo = targetInterpreter.ConnectionInfo;
@@ -343,15 +317,18 @@ namespace DatabaseMigration.Core
 
                                     this.HandleError(dataTransferException);
 
-                                    DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
+                                    if (!this.Option.UseTransaction)
                                     {
-                                        SourceServer = sourceConnectionInfo.Server,
-                                        SourceDatabase = sourceConnectionInfo.Database,
-                                        SourceTableName = table.Name,
-                                        TargetServer = targetConnectionInfo.Server,
-                                        TargetDatabase = targetConnectionInfo.Database,
-                                        TargetTableName = table.Name
-                                    });
+                                        DataTransferErrorProfileManager.Save(new DataTransferErrorProfile
+                                        {
+                                            SourceServer = sourceConnectionInfo.Server,
+                                            SourceDatabase = sourceConnectionInfo.Database,
+                                            SourceTableName = table.Name,
+                                            TargetServer = targetConnectionInfo.Server,
+                                            TargetDatabase = targetConnectionInfo.Database,
+                                            TargetTableName = table.Name
+                                        });
+                                    }
                                 }
                             }
                         };
@@ -359,23 +336,72 @@ namespace DatabaseMigration.Core
 
                     await sourceInterpreter.GenerateDataScriptsAsync(sourceSchemaInfo);
 
-                    identityTableColumns.ForEach(item =>
+                    foreach (var item in identityTableColumns)
                     {
                         if (targetInterpreter.DatabaseType == DatabaseType.SqlServer)
                         {
-                            targetInterpreter.SetIdentityEnabled(dataTransferDbConnection, item, true);
+                            await targetInterpreter.SetIdentityEnabled(dbConnection, item, true);
                         }
-                    });
+                    }
                 }
+                #endregion
+
+                if (this.transaction != null && !this.cancelRequested)
+                {
+                    this.transaction.Commit();
+                }               
+
+                this.isBusy = false;
             }
-            #endregion
+
+            if (dataErrorProfile != null && !this.hasError && !this.cancelRequested)
+            {
+                DataTransferErrorProfileManager.Remove(dataErrorProfile);
+            }
+        }
+
+        private void Rollback()
+        {
+            if (this.transaction != null)
+            {
+                this.transaction.Rollback();
+            }
+        }
+
+        private CommandInfo GetCommandInfo(string commandText, Dictionary<string, object> parameters = null, DbTransaction transaction = null)
+        {
+            CommandInfo commandInfo = new CommandInfo()
+            {
+                CommandType = CommandType.Text,
+                CommandText = commandText,
+                Parameters = parameters,
+                Transaction = transaction,
+                CancellationToken = this.CancellationTokenSource.Token
+            };
+            return commandInfo;
         }
 
         private void HandleError(MigrationException ex)
         {
             this.hasError = true;
+            this.isBusy = false;
+
             string errMsg = ExceptionHelper.GetExceptionDetails(ex);
             this.Feedback(this, errMsg, FeedbackInfoType.Error);
+        }
+
+        public void Cancle()
+        {
+            this.cancelRequested = true;
+            this.Source.DbInterpreter.CancelRequested = true;
+            this.Target.DbInterpreter.CancelRequested = true;
+
+            this.Rollback();
+
+            if (this.CancellationTokenSource != null)
+            {
+                this.CancellationTokenSource.Cancel();
+            }
         }
 
         private (Table Table, List<TableColumn> Columns) GetTargetTableColumns(SchemaInfo targetSchemaInfo, string targetOwner, Table sourceTable, List<TableColumn> sourceColumns)
@@ -422,6 +448,11 @@ namespace DatabaseMigration.Core
         {
             this.Source = null;
             this.Target = null;
+
+            if (this.transaction != null)
+            {
+                this.transaction = null;
+            }
         }
     }
 }

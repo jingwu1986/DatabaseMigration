@@ -60,11 +60,8 @@ namespace DatabaseMigration.Demo
                     {
                         target.DbInterpreter.Option.RemoveEmoji = true;
                     }
-                    else if (targetDbType == DatabaseType.Oracle)
-                    {
-                        dbConvertor.Option.SplitScriptsToExecute = true;
-                        dbConvertor.Option.ScriptSplitChar = ';';
-                    }
+
+                    dbConvertor.Option.SplitScriptsToExecute = true;
 
                     FeedbackHelper.EnableLog = true;
 

@@ -20,6 +20,7 @@ namespace DatabaseMigration
 
             this.numCommandTimeout.Value = setting.CommandTimeout;
             this.numDataBatchSize.Value = setting.DataBatchSize;
+            this.chkShowBuiltinDatabase.Checked = setting.ShowBuiltinDatabase;
             this.txtMySqlCharset.Text = setting.MySqlCharset;
             this.txtMySqlCharsetCollation.Text = setting.MySqlCharsetCollation;
             this.chkEnableLog.Checked = setting.EnableLog;
@@ -30,6 +31,7 @@ namespace DatabaseMigration
             Setting setting = SettingManager.Setting;
             setting.CommandTimeout = (int)this.numCommandTimeout.Value;
             setting.DataBatchSize = (int)this.numDataBatchSize.Value;
+            setting.ShowBuiltinDatabase = this.chkShowBuiltinDatabase.Checked;
             setting.MySqlCharset = this.txtMySqlCharset.Text.Trim();
             setting.MySqlCharsetCollation = this.txtMySqlCharsetCollation.Text.Trim();
             setting.EnableLog = this.chkEnableLog.Checked;

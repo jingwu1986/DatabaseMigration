@@ -22,6 +22,7 @@ namespace DatabaseMigration
         private ConnectionInfo sourceDbConnectionInfo;
         private ConnectionInfo targetDbConnectionInfo;
         private bool hasError = false;
+        private DbConvertor dbConvertor = null;
 
         public frmMain()
         {
@@ -30,14 +31,6 @@ namespace DatabaseMigration
             CheckBox.CheckForIllegalCrossThreadCalls = false;
             TextBox.CheckForIllegalCrossThreadCalls = false;
             TreeView.CheckForIllegalCrossThreadCalls = false;
-
-            this.sourceScriptBackgroundWorker.WorkerSupportsCancellation = true;
-            this.convertorBackgroundWorker.WorkerSupportsCancellation = true;
-            this.sourceScriptBackgroundWorker.DoWork += SourceScriptBackgroundWorker_DoWork;
-            this.convertorBackgroundWorker.DoWork += async (sender, e) =>
-            {
-                await ConvertorBackgroundWorker_DoWork(sender, e);
-            };
         }
 
         private void frmMain_Load(object sender, EventArgs e)
@@ -277,7 +270,7 @@ namespace DatabaseMigration
                 try
                 {
                     this.LoadSourceDbSchemaInfo();
-                    this.btnSourceScript.Enabled = true;
+                    this.btnGenerateSourceScripts.Enabled = true;
                     this.btnExecute.Enabled = true;
                 }
                 catch (Exception ex)
@@ -350,24 +343,17 @@ namespace DatabaseMigration
             }
         }
 
-        private void btnExecute_Click(object sender, EventArgs e)
+        private async void btnExecute_Click(object sender, EventArgs e)
         {
-            if (!this.convertorBackgroundWorker.IsBusy)
-            {
-                this.txtMessage.ForeColor = Color.Black;
-                this.txtMessage.Text = "";
+            this.txtMessage.ForeColor = Color.Black;
+            this.txtMessage.Text = "";
 
-                FeedbackHelper.EnableLog = SettingManager.Setting.EnableLog;
-                LogHelper.EnableDebug = true;
+            FeedbackHelper.EnableLog = SettingManager.Setting.EnableLog;
+            LogHelper.EnableDebug = true;
 
-                this.hasError = false;
+            this.hasError = false;
 
-                this.convertorBackgroundWorker.RunWorkerAsync();
-            }
-            else
-            {
-                MessageBox.Show("The worker is busy now.");
-            }
+            await Task.Run(() => this.Convert());
         }
 
         private SchemaInfo GetSourceTreeSchemaInfo()
@@ -444,14 +430,8 @@ namespace DatabaseMigration
             return scriptMode;
         }
 
-        private async Task ConvertorBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private async Task Convert()
         {
-            if (this.convertorBackgroundWorker.CancellationPending)
-            {
-                e.Cancel = true;
-                return;
-            }
-
             SchemaInfo schemaInfo = this.GetSourceTreeSchemaInfo();
             if (!this.ValidateSource(schemaInfo))
             {
@@ -503,11 +483,12 @@ namespace DatabaseMigration
 
             try
             {
-                using (DbConvertor dbConvertor = new DbConvertor(source, target))
+                using (dbConvertor = new DbConvertor(source, target))
                 {
                     dbConvertor.Option.GenerateScriptMode = scriptMode;
                     dbConvertor.Option.BulkCopy = this.chkBulkCopy.Checked;
                     dbConvertor.Option.ExecuteScriptOnTargetServer = this.chkExecuteOnTarget.Checked;
+                    dbConvertor.Option.UseTransaction = this.chkUseTransaction.Checked;
 
                     dbConvertor.Subscribe(this);
 
@@ -524,31 +505,13 @@ namespace DatabaseMigration
                     {
                         target.DbInterpreter.Option.RemoveEmoji = true;
                     }
-                    else if (targetDbType == DatabaseType.Oracle)
-                    {
-                        dbConvertor.Option.SplitScriptsToExecute = true;
-                        dbConvertor.Option.ScriptSplitChar = ';';
-                    }
 
-                    DataTransferErrorProfile dataErrorProfile = null;
-                    if (this.chkPickup.Checked && scriptMode.HasFlag(GenerateScriptMode.Data))
-                    {
-                        dataErrorProfile = DataTransferErrorProfileManager.GetProfile(this.sourceDbConnectionInfo, this.targetDbConnectionInfo);
-                        if (dataErrorProfile != null)
-                        {
-                            dbConvertor.Option.PickupTable = new Table() { Owner = schemaInfo.Tables.FirstOrDefault()?.Owner, Name = dataErrorProfile.SourceTableName };
-                        }
-                    }
+                    dbConvertor.Option.SplitScriptsToExecute = true;
 
                     this.btnExecute.Enabled = false;
                     this.btnCancel.Enabled = true;
 
                     await dbConvertor.Convert(schemaInfo);
-
-                    if (dataErrorProfile != null && !dbConvertor.HasError)
-                    {
-                        DataTransferErrorProfileManager.Remove(dataErrorProfile);
-                    }
                 }
             }
             catch (Exception ex)
@@ -562,8 +525,15 @@ namespace DatabaseMigration
                 this.btnExecute.Enabled = true;
                 this.btnCancel.Enabled = false;
 
-                this.txtMessage.AppendText(Environment.NewLine + DONE);
-                MessageBox.Show(DONE);
+                if (!this.dbConvertor.CancelRequested)
+                {
+                    this.txtMessage.AppendText(Environment.NewLine + DONE);
+                    MessageBox.Show(DONE);
+                }
+                else
+                {
+                    MessageBox.Show("Task has been canceled.");
+                }
             }
         }
 
@@ -591,6 +561,12 @@ namespace DatabaseMigration
                 if (info.InfoType == FeedbackInfoType.Error)
                 {
                     this.hasError = true;
+
+                    if (this.dbConvertor != null && this.dbConvertor.IsBusy)
+                    {
+                        this.dbConvertor.Cancle();
+                    }
+
                     this.btnExecute.Enabled = true;
                     this.btnCancel.Enabled = false;
 
@@ -621,38 +597,44 @@ namespace DatabaseMigration
             this.txtMessage.ScrollToCaret();
         }
 
-        private void btnCancel_Click(object sender, EventArgs e)
+        private bool ConfirmCancel()
         {
-            this.convertorBackgroundWorker.CancelAsync();
-            this.btnExecute.Enabled = true;
-            this.btnCancel.Enabled = false;
+            if (MessageBox.Show("Are you sure to abandon current task?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                return true;
+            }
+            return false;
         }
 
-        private void btnSourceScript_Click(object sender, EventArgs e)
+        private async void btnCancel_Click(object sender, EventArgs e)
         {
-            if (!this.sourceScriptBackgroundWorker.IsBusy)
+            if (this.dbConvertor != null && this.dbConvertor.IsBusy)
             {
-                this.sourceScriptBackgroundWorker.RunWorkerAsync();
-            }
-            else
-            {
-                MessageBox.Show("The worker is busy now.");
+                if (this.ConfirmCancel())
+                {
+                    this.dbConvertor.Cancle();
+
+                    this.btnExecute.Enabled = true;
+                    this.btnCancel.Enabled = false;
+                }
             }
         }
 
-        private async void SourceScriptBackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        private async void btnSourceScript_Click(object sender, EventArgs e)
         {
-            if (this.sourceScriptBackgroundWorker.CancellationPending)
-            {
-                e.Cancel = true;
-                return;
-            }
+            await Task.Run(() => this.GenerateScourceDbScripts());
+        }
 
+        private async void GenerateScourceDbScripts()
+        {
             SchemaInfo schemaInfo = this.GetSourceTreeSchemaInfo();
+
             if (!this.ValidateSource(schemaInfo))
             {
                 return;
             }
+
+            this.btnGenerateSourceScripts.Enabled = false;
 
             DatabaseType sourceDbType = this.GetDatabaseType(this.cboSourceDB.Text);
 
@@ -662,6 +644,7 @@ namespace DatabaseMigration
             this.SetGenerateScriptOption(sourceScriptOption);
 
             GenerateScriptMode scriptMode = this.GetGenerateScriptMode();
+
             if (scriptMode == GenerateScriptMode.None)
             {
                 MessageBox.Show("Please specify the script mode.");
@@ -669,38 +652,44 @@ namespace DatabaseMigration
             }
 
             DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(sourceDbType, this.sourceDbConnectionInfo, sourceScriptOption);
-            string[] tableNames = schemaInfo.Tables.Select(item => item.Name).ToArray();
-            string[] userDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray();
-            string[] viewNames = schemaInfo.Views.Select(item => item.Name).ToArray();
 
             SelectionInfo selectionInfo = new SelectionInfo()
             {
-                UserDefinedTypeNames = userDefinedTypeNames,
-                TableNames = tableNames,
-                ViewNames = viewNames
+                UserDefinedTypeNames = schemaInfo.UserDefinedTypes.Select(item => item.Name).ToArray(),
+                TableNames = schemaInfo.Tables.Select(item => item.Name).ToArray(),
+                ViewNames = schemaInfo.Views.Select(item => item.Name).ToArray()
             };
 
-            schemaInfo = await dbInterpreter.GetSchemaInfoAsync(selectionInfo);
-
-            dbInterpreter.Subscribe(this);
-
-            GenerateScriptMode mode = GenerateScriptMode.None;
-
-            if (scriptMode.HasFlag(GenerateScriptMode.Schema))
+            try
             {
-                mode = GenerateScriptMode.Schema;
-                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
+                schemaInfo = await dbInterpreter.GetSchemaInfoAsync(selectionInfo);
+
+                dbInterpreter.Subscribe(this);
+
+                GenerateScriptMode mode = GenerateScriptMode.None;
+
+                if (scriptMode.HasFlag(GenerateScriptMode.Schema))
+                {
+                    mode = GenerateScriptMode.Schema;
+                    dbInterpreter.GenerateSchemaScripts(schemaInfo);
+                }
+
+                if (scriptMode.HasFlag(GenerateScriptMode.Data))
+                {
+                    mode = GenerateScriptMode.Data;
+                    await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
+                }
+
+                this.OpenInExplorer(dbInterpreter.GetScriptOutputFilePath(mode));
+
+                MessageBox.Show(DONE);
+            }
+            catch (Exception ex)
+            {
+                this.HandleException(ex);
             }
 
-            if (scriptMode.HasFlag(GenerateScriptMode.Data))
-            {
-                mode = GenerateScriptMode.Data;
-                await dbInterpreter.GenerateDataScriptsAsync(schemaInfo);
-            }
-
-            this.OpenInExplorer(dbInterpreter.GetScriptOutputFilePath(mode));
-
-            MessageBox.Show(DONE);
+            this.btnGenerateSourceScripts.Enabled = true;
         }
 
         public void OpenInExplorer(string filePath)
@@ -794,11 +783,11 @@ namespace DatabaseMigration
 
         private void frmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (this.convertorBackgroundWorker.IsBusy)
+            if (this.dbConvertor != null && this.dbConvertor.IsBusy)
             {
-                if (MessageBox.Show("Are you sure to abandon current task?", "Confirm", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                if (this.ConfirmCancel())
                 {
-                    this.convertorBackgroundWorker.CancelAsync();
+                    this.dbConvertor.Cancle();
                     e.Cancel = false;
                 }
                 else
@@ -810,8 +799,15 @@ namespace DatabaseMigration
 
         private void btnCopyMessage_Click(object sender, EventArgs e)
         {
-            Clipboard.SetDataObject(this.txtMessage.Text);
-            MessageBox.Show("The message has been copied to clipboard.");
+            if (!string.IsNullOrEmpty(this.txtMessage.Text))
+            {
+                Clipboard.SetDataObject(this.txtMessage.Text);
+                MessageBox.Show("The message has been copied to clipboard.");
+            }
+            else
+            {
+                MessageBox.Show("There's no message.");
+            }
         }
 
         private void btnSaveMessage_Click(object sender, EventArgs e)
@@ -821,12 +817,19 @@ namespace DatabaseMigration
                 this.dlgSaveLog = new SaveFileDialog();
             }
 
-            this.dlgSaveLog.Filter = "txt files|*.txt|all files|*.*";
-            DialogResult dialogResult = this.dlgSaveLog.ShowDialog();
-            if (dialogResult == DialogResult.OK)
+            if (!string.IsNullOrEmpty(this.txtMessage.Text))
             {
-                File.WriteAllLines(this.dlgSaveLog.FileName, this.txtMessage.Text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
-                this.dlgSaveLog.Reset();
+                this.dlgSaveLog.Filter = "txt files|*.txt|all files|*.*";
+                DialogResult dialogResult = this.dlgSaveLog.ShowDialog();
+                if (dialogResult == DialogResult.OK)
+                {
+                    File.WriteAllLines(this.dlgSaveLog.FileName, this.txtMessage.Text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries));
+                    this.dlgSaveLog.Reset();
+                }
+            }
+            else
+            {
+                MessageBox.Show("There's no message.");
             }
         }
 

@@ -102,6 +102,8 @@ namespace DatabaseMigration.Win
             ConnectionInfo connectionInfo = this.GetConnectionInfo();
             DbInterpreter dbInterpreter = DbInterpreterHelper.GetDbInterpreter(this.DatabaseType, connectionInfo, new DbInterpreterOption());
 
+            string oldDatabase = this.cboDatabase.Text;
+
             try
             {
                 using (DbConnection dbConnection = dbInterpreter.GetDbConnector().CreateConnection())
@@ -110,15 +112,15 @@ namespace DatabaseMigration.Win
 
                     MessageBox.Show("Success.");
 
-                    if (string.IsNullOrEmpty(this.cboDatabase.Text.Trim()))
+                    this.cboDatabase.Items.Clear();
+
+                    List<Database> databaseses = await dbInterpreter.GetDatabasesAsync();
+                    databaseses.ForEach(item =>
                     {
-                        this.cboDatabase.Items.Clear();
-                        List<Database> databaseses = await dbInterpreter.GetDatabasesAsync();
-                        databaseses.ForEach(item =>
-                        {
-                            this.cboDatabase.Items.Add(item.Name);
-                        });
-                    }
+                        this.cboDatabase.Items.Add(item.Name);
+                    });
+
+                    this.cboDatabase.Text = oldDatabase;
                 }
             }
             catch (Exception ex)

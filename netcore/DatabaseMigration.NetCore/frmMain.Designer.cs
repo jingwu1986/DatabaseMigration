@@ -32,15 +32,13 @@
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripMenuItem();
             this.settingToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.convertorBackgroundWorker = new System.ComponentModel.BackgroundWorker();
-            this.sourceScriptBackgroundWorker = new System.ComponentModel.BackgroundWorker();
             this.btnSaveMessage = new System.Windows.Forms.Button();
             this.btnCopyMessage = new System.Windows.Forms.Button();
             this.txtMessage = new System.Windows.Forms.RichTextBox();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnExecute = new System.Windows.Forms.Button();
-            this.btnSourceScript = new System.Windows.Forms.Button();
+            this.btnGenerateSourceScripts = new System.Windows.Forms.Button();
             this.btnRemoveTarget = new System.Windows.Forms.Button();
             this.btnRemoveSource = new System.Windows.Forms.Button();
             this.btnConnect = new System.Windows.Forms.Button();
@@ -70,6 +68,7 @@
             this.txtTargetDbOwner = new System.Windows.Forms.TextBox();
             this.lblScriptsMode = new System.Windows.Forms.Label();
             this.tvSource = new System.Windows.Forms.TreeView();
+            this.chkUseTransaction = new System.Windows.Forms.CheckBox();
             this.menuStrip1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -105,16 +104,6 @@
             this.settingToolStripMenuItem.Size = new System.Drawing.Size(122, 22);
             this.settingToolStripMenuItem.Text = "Settings";
             this.settingToolStripMenuItem.Click += new System.EventHandler(this.settingToolStripMenuItem_Click);
-            // 
-            // convertorBackgroundWorker
-            // 
-            this.convertorBackgroundWorker.WorkerReportsProgress = false;
-            this.convertorBackgroundWorker.WorkerSupportsCancellation = false;
-            // 
-            // sourceScriptBackgroundWorker
-            // 
-            this.sourceScriptBackgroundWorker.WorkerReportsProgress = false;
-            this.sourceScriptBackgroundWorker.WorkerSupportsCancellation = false;
             // 
             // btnSaveMessage
             // 
@@ -169,7 +158,7 @@
             // 
             this.splitContainer1.Panel1.Controls.Add(this.btnCancel);
             this.splitContainer1.Panel1.Controls.Add(this.btnExecute);
-            this.splitContainer1.Panel1.Controls.Add(this.btnSourceScript);
+            this.splitContainer1.Panel1.Controls.Add(this.btnGenerateSourceScripts);
             this.splitContainer1.Panel1.Controls.Add(this.btnRemoveTarget);
             this.splitContainer1.Panel1.Controls.Add(this.btnRemoveSource);
             this.splitContainer1.Panel1.Controls.Add(this.btnConnect);
@@ -221,18 +210,18 @@
             this.btnExecute.UseVisualStyleBackColor = true;
             this.btnExecute.Click += new System.EventHandler(this.btnExecute_Click);
             // 
-            // btnSourceScript
+            // btnGenerateSourceScripts
             // 
-            this.btnSourceScript.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnSourceScript.Enabled = false;
-            this.btnSourceScript.Location = new System.Drawing.Point(13, 425);
-            this.btnSourceScript.Margin = new System.Windows.Forms.Padding(4);
-            this.btnSourceScript.Name = "btnSourceScript";
-            this.btnSourceScript.Size = new System.Drawing.Size(306, 30);
-            this.btnSourceScript.TabIndex = 23;
-            this.btnSourceScript.Text = "Generate scripts of source DB ";
-            this.btnSourceScript.UseVisualStyleBackColor = true;
-            this.btnSourceScript.Click += new System.EventHandler(this.btnSourceScript_Click);
+            this.btnGenerateSourceScripts.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnGenerateSourceScripts.Enabled = false;
+            this.btnGenerateSourceScripts.Location = new System.Drawing.Point(13, 425);
+            this.btnGenerateSourceScripts.Margin = new System.Windows.Forms.Padding(4);
+            this.btnGenerateSourceScripts.Name = "btnGenerateSourceScripts";
+            this.btnGenerateSourceScripts.Size = new System.Drawing.Size(306, 30);
+            this.btnGenerateSourceScripts.TabIndex = 23;
+            this.btnGenerateSourceScripts.Text = "Generate scripts of source DB ";
+            this.btnGenerateSourceScripts.UseVisualStyleBackColor = true;
+            this.btnGenerateSourceScripts.Click += new System.EventHandler(this.btnSourceScript_Click);
             // 
             // btnRemoveTarget
             // 
@@ -414,20 +403,21 @@
             this.groupBox1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.groupBox1.Controls.Add(this.chkBulkCopy);
+            this.groupBox1.Controls.Add(this.chkUseTransaction);
+            this.groupBox1.Controls.Add(this.chkOutputScripts);
+            this.groupBox1.Controls.Add(this.chkGenerateIdentity);
+            this.groupBox1.Controls.Add(this.chkPickup);
+            this.groupBox1.Controls.Add(this.lblScriptsMode);
             this.groupBox1.Controls.Add(this.btnOutputFolder);
             this.groupBox1.Controls.Add(this.txtOutputFolder);
-            this.groupBox1.Controls.Add(this.lblOutputFolder);
-            this.groupBox1.Controls.Add(this.chkGenerateIdentity);
-            this.groupBox1.Controls.Add(this.chkGenerateSourceScripts);
-            this.groupBox1.Controls.Add(this.chkPickup);
-            this.groupBox1.Controls.Add(this.chkBulkCopy);
-            this.groupBox1.Controls.Add(this.chkExecuteOnTarget);
-            this.groupBox1.Controls.Add(this.chkOutputScripts);
             this.groupBox1.Controls.Add(this.lblTargetDbOwner);
+            this.groupBox1.Controls.Add(this.chkExecuteOnTarget);
+            this.groupBox1.Controls.Add(this.chkGenerateSourceScripts);
+            this.groupBox1.Controls.Add(this.lblOutputFolder);
             this.groupBox1.Controls.Add(this.chkScriptData);
             this.groupBox1.Controls.Add(this.chkScriptSchema);
             this.groupBox1.Controls.Add(this.txtTargetDbOwner);
-            this.groupBox1.Controls.Add(this.lblScriptsMode);
             this.groupBox1.Location = new System.Drawing.Point(334, 69);
             this.groupBox1.Margin = new System.Windows.Forms.Padding(4);
             this.groupBox1.Name = "groupBox1";
@@ -439,7 +429,7 @@
             // 
             // btnOutputFolder
             // 
-            this.btnOutputFolder.Location = new System.Drawing.Point(323, 272);
+            this.btnOutputFolder.Location = new System.Drawing.Point(357, 308);
             this.btnOutputFolder.Margin = new System.Windows.Forms.Padding(4);
             this.btnOutputFolder.Name = "btnOutputFolder";
             this.btnOutputFolder.Size = new System.Drawing.Size(42, 24);
@@ -450,7 +440,7 @@
             // 
             // txtOutputFolder
             // 
-            this.txtOutputFolder.Location = new System.Drawing.Point(108, 272);
+            this.txtOutputFolder.Location = new System.Drawing.Point(146, 309);
             this.txtOutputFolder.Margin = new System.Windows.Forms.Padding(4);
             this.txtOutputFolder.Name = "txtOutputFolder";
             this.txtOutputFolder.Size = new System.Drawing.Size(207, 23);
@@ -459,17 +449,17 @@
             // lblOutputFolder
             // 
             this.lblOutputFolder.AutoSize = true;
-            this.lblOutputFolder.Location = new System.Drawing.Point(8, 275);
+            this.lblOutputFolder.Location = new System.Drawing.Point(8, 310);
             this.lblOutputFolder.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblOutputFolder.Name = "lblOutputFolder";
-            this.lblOutputFolder.Size = new System.Drawing.Size(92, 17);
+            this.lblOutputFolder.Size = new System.Drawing.Size(131, 17);
             this.lblOutputFolder.TabIndex = 6;
-            this.lblOutputFolder.Text = "Output Folder:";
+            this.lblOutputFolder.Text = "Scripts output folder:";
             // 
             // chkGenerateIdentity
             // 
             this.chkGenerateIdentity.AutoSize = true;
-            this.chkGenerateIdentity.Location = new System.Drawing.Point(11, 212);
+            this.chkGenerateIdentity.Location = new System.Drawing.Point(11, 214);
             this.chkGenerateIdentity.Margin = new System.Windows.Forms.Padding(4);
             this.chkGenerateIdentity.Name = "chkGenerateIdentity";
             this.chkGenerateIdentity.Size = new System.Drawing.Size(126, 21);
@@ -480,12 +470,12 @@
             // chkGenerateSourceScripts
             // 
             this.chkGenerateSourceScripts.AutoSize = true;
-            this.chkGenerateSourceScripts.Location = new System.Drawing.Point(11, 153);
+            this.chkGenerateSourceScripts.Location = new System.Drawing.Point(11, 278);
             this.chkGenerateSourceScripts.Margin = new System.Windows.Forms.Padding(4);
             this.chkGenerateSourceScripts.Name = "chkGenerateSourceScripts";
-            this.chkGenerateSourceScripts.Size = new System.Drawing.Size(282, 21);
+            this.chkGenerateSourceScripts.Size = new System.Drawing.Size(269, 21);
             this.chkGenerateSourceScripts.TabIndex = 8;
-            this.chkGenerateSourceScripts.Text = "Generate scripts of source database as well";
+            this.chkGenerateSourceScripts.Text = "Output scripts of source database as well";
             this.chkGenerateSourceScripts.UseVisualStyleBackColor = true;
             // 
             // chkPickup
@@ -502,7 +492,7 @@
             // chkBulkCopy
             // 
             this.chkBulkCopy.AutoSize = true;
-            this.chkBulkCopy.Location = new System.Drawing.Point(11, 244);
+            this.chkBulkCopy.Location = new System.Drawing.Point(11, 150);
             this.chkBulkCopy.Margin = new System.Windows.Forms.Padding(4);
             this.chkBulkCopy.Name = "chkBulkCopy";
             this.chkBulkCopy.Size = new System.Drawing.Size(190, 21);
@@ -515,7 +505,7 @@
             this.chkExecuteOnTarget.AutoSize = true;
             this.chkExecuteOnTarget.Checked = true;
             this.chkExecuteOnTarget.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkExecuteOnTarget.Location = new System.Drawing.Point(11, 124);
+            this.chkExecuteOnTarget.Location = new System.Drawing.Point(11, 86);
             this.chkExecuteOnTarget.Margin = new System.Windows.Forms.Padding(4);
             this.chkExecuteOnTarget.Name = "chkExecuteOnTarget";
             this.chkExecuteOnTarget.Size = new System.Drawing.Size(229, 21);
@@ -526,18 +516,18 @@
             // chkOutputScripts
             // 
             this.chkOutputScripts.AutoSize = true;
-            this.chkOutputScripts.Location = new System.Drawing.Point(11, 95);
+            this.chkOutputScripts.Location = new System.Drawing.Point(11, 246);
             this.chkOutputScripts.Margin = new System.Windows.Forms.Padding(4);
             this.chkOutputScripts.Name = "chkOutputScripts";
-            this.chkOutputScripts.Size = new System.Drawing.Size(109, 21);
+            this.chkOutputScripts.Size = new System.Drawing.Size(146, 21);
             this.chkOutputScripts.TabIndex = 0;
-            this.chkOutputScripts.Text = "Output scripts";
+            this.chkOutputScripts.Text = "Output scripts to file";
             this.chkOutputScripts.UseVisualStyleBackColor = true;
             // 
             // lblTargetDbOwner
             // 
             this.lblTargetDbOwner.AutoSize = true;
-            this.lblTargetDbOwner.Location = new System.Drawing.Point(7, 64);
+            this.lblTargetDbOwner.Location = new System.Drawing.Point(8, 58);
             this.lblTargetDbOwner.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblTargetDbOwner.Name = "lblTargetDbOwner";
             this.lblTargetDbOwner.Size = new System.Drawing.Size(147, 17);
@@ -549,7 +539,7 @@
             this.chkScriptData.AutoSize = true;
             this.chkScriptData.Checked = true;
             this.chkScriptData.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkScriptData.Location = new System.Drawing.Point(206, 30);
+            this.chkScriptData.Location = new System.Drawing.Point(153, 30);
             this.chkScriptData.Margin = new System.Windows.Forms.Padding(4);
             this.chkScriptData.Name = "chkScriptData";
             this.chkScriptData.Size = new System.Drawing.Size(53, 21);
@@ -562,7 +552,7 @@
             this.chkScriptSchema.AutoSize = true;
             this.chkScriptSchema.Checked = true;
             this.chkScriptSchema.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkScriptSchema.Location = new System.Drawing.Point(113, 30);
+            this.chkScriptSchema.Location = new System.Drawing.Point(62, 30);
             this.chkScriptSchema.Margin = new System.Windows.Forms.Padding(4);
             this.chkScriptSchema.Name = "chkScriptSchema";
             this.chkScriptSchema.Size = new System.Drawing.Size(71, 21);
@@ -572,7 +562,7 @@
             // 
             // txtTargetDbOwner
             // 
-            this.txtTargetDbOwner.Location = new System.Drawing.Point(175, 60);
+            this.txtTargetDbOwner.Location = new System.Drawing.Point(163, 58);
             this.txtTargetDbOwner.Margin = new System.Windows.Forms.Padding(4);
             this.txtTargetDbOwner.Name = "txtTargetDbOwner";
             this.txtTargetDbOwner.Size = new System.Drawing.Size(151, 23);
@@ -584,9 +574,9 @@
             this.lblScriptsMode.Location = new System.Drawing.Point(8, 30);
             this.lblScriptsMode.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblScriptsMode.Name = "lblScriptsMode";
-            this.lblScriptsMode.Size = new System.Drawing.Size(88, 17);
+            this.lblScriptsMode.Size = new System.Drawing.Size(46, 17);
             this.lblScriptsMode.TabIndex = 1;
-            this.lblScriptsMode.Text = "Scripts mode:";
+            this.lblScriptsMode.Text = "Mode:";
             // 
             // tvSource
             // 
@@ -599,6 +589,19 @@
             this.tvSource.Size = new System.Drawing.Size(305, 346);
             this.tvSource.TabIndex = 19;
             this.tvSource.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.tvSource_AfterCheck);
+            // 
+            // chkUseTransaction
+            // 
+            this.chkUseTransaction.AutoSize = true;
+            this.chkUseTransaction.Checked = true;
+            this.chkUseTransaction.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkUseTransaction.Location = new System.Drawing.Point(11, 118);
+            this.chkUseTransaction.Margin = new System.Windows.Forms.Padding(4);
+            this.chkUseTransaction.Name = "chkUseTransaction";
+            this.chkUseTransaction.Size = new System.Drawing.Size(117, 21);
+            this.chkUseTransaction.TabIndex = 7;
+            this.chkUseTransaction.Text = "Use transaction";
+            this.chkUseTransaction.UseVisualStyleBackColor = true;
             // 
             // frmMain
             // 
@@ -632,8 +635,6 @@
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItem1;
         private System.Windows.Forms.ToolStripMenuItem settingToolStripMenuItem;
-        private System.ComponentModel.BackgroundWorker convertorBackgroundWorker;
-        private System.ComponentModel.BackgroundWorker sourceScriptBackgroundWorker;
         private System.Windows.Forms.RichTextBox txtMessage;
         private System.Windows.Forms.Button btnSaveMessage;
         private System.Windows.Forms.Button btnCopyMessage;
@@ -652,7 +653,7 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.ComboBox cboTargetDB;
         private System.Windows.Forms.ComboBox cboSourceDB;
-        private System.Windows.Forms.Button btnSourceScript;
+        private System.Windows.Forms.Button btnGenerateSourceScripts;
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Button btnExecute;
         private System.Windows.Forms.GroupBox groupBox1;
@@ -672,6 +673,7 @@
         private System.Windows.Forms.CheckBox chkOutputScripts;
         private System.Windows.Forms.TreeView tvSource;
         private System.Windows.Forms.FolderBrowserDialog dlgOutputFolder;
+        private System.Windows.Forms.CheckBox chkUseTransaction;
     }
 }
 

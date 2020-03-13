@@ -43,6 +43,7 @@
             this.label3 = new System.Windows.Forms.Label();
             this.txtMySqlCharset = new System.Windows.Forms.TextBox();
             this.lblMySqlCharset = new System.Windows.Forms.Label();
+            this.chkShowBuiltinDatabase = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.numCommandTimeout)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.numDataBatchSize)).BeginInit();
             this.tabControl1.SuspendLayout();
@@ -160,6 +161,7 @@
             // tabGeneral
             // 
             this.tabGeneral.BackColor = System.Drawing.SystemColors.Control;
+            this.tabGeneral.Controls.Add(this.chkShowBuiltinDatabase);
             this.tabGeneral.Controls.Add(this.chkEnableLog);
             this.tabGeneral.Controls.Add(this.label2);
             this.tabGeneral.Controls.Add(this.numDataBatchSize);
@@ -176,7 +178,7 @@
             // chkEnableLog
             // 
             this.chkEnableLog.AutoSize = true;
-            this.chkEnableLog.Location = new System.Drawing.Point(11, 72);
+            this.chkEnableLog.Location = new System.Drawing.Point(11, 96);
             this.chkEnableLog.Name = "chkEnableLog";
             this.chkEnableLog.Size = new System.Drawing.Size(84, 16);
             this.chkEnableLog.TabIndex = 15;
@@ -229,6 +231,16 @@
             this.lblMySqlCharset.TabIndex = 0;
             this.lblMySqlCharset.Text = "Charset:";
             // 
+            // chkShowBuiltinDatabase
+            // 
+            this.chkShowBuiltinDatabase.AutoSize = true;
+            this.chkShowBuiltinDatabase.Location = new System.Drawing.Point(11, 68);
+            this.chkShowBuiltinDatabase.Name = "chkShowBuiltinDatabase";
+            this.chkShowBuiltinDatabase.Size = new System.Drawing.Size(150, 16);
+            this.chkShowBuiltinDatabase.TabIndex = 16;
+            this.chkShowBuiltinDatabase.Text = "Show builtin database";
+            this.chkShowBuiltinDatabase.UseVisualStyleBackColor = true;
+            // 
             // frmSetting
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -270,5 +282,6 @@
         private System.Windows.Forms.TextBox txtMySqlCharsetCollation;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.CheckBox chkEnableLog;
+        private System.Windows.Forms.CheckBox chkShowBuiltinDatabase;
     }
 }
